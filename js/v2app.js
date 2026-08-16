@@ -25,10 +25,16 @@
     /** 后端地址配置 (从 GitHub 私有仓库读取, 隧道换地址时前端自动跟随) */
     const BACKEND_CONFIG_URL = "https://gist.githubusercontent.com/Re-qwq/81ae82faf80424c5955e4e0959cdd088/raw/backend.json";
 
+    /** 后端地址配置加载 Promise (init 等待它完成再进面板) */
+    let backendConfigReady = null;
+
     /** 启动时尝试加载远端后端地址 (失败则回退同源) */
-    (async function loadBackendConfig() {
+    backendConfigReady = (async function loadBackendConfig() {
         try {
-            const resp = await fetch(BACKEND_CONFIG_URL + "?t=" + Date.now(), { cache: "no-store" });
+            const ctrl = new AbortController();
+            const t = setTimeout(() => ctrl.abort(), 8000);
+            const resp = await fetch(BACKEND_CONFIG_URL + "?t=" + Date.now(), { cache: "no-store", signal: ctrl.signal });
+            clearTimeout(t);
             if (resp.ok) {
                 const cfg = await resp.json();
                 if (cfg && cfg.api_base) {
@@ -184,10 +190,11 @@
         if (state.token) headers["Authorization"] = "Bearer " + state.token;
         if (options.headers) Object.assign(headers, options.headers);
 
-        // 构建 fetch 选项
+        // 构建 fetch 选项 (跨域时 credentials=omit, 认证走 Authorization header)
+        const isCrossOrigin = url.startsWith("http") && !url.startsWith(location.origin);
         const fetchOpts = {
             method: options.method || "GET",
-            credentials: "include",
+            credentials: isCrossOrigin ? "omit" : "include",
             headers,
         };
 
@@ -587,6 +594,11 @@
             }
         } catch (e) {
             // 版本获取失败不影响启动
+        }
+
+        // 等待后端地址配置加载完成 (最多 8 秒, 失败回退同源)
+        if (backendConfigReady) {
+            try { await Promise.race([backendConfigReady, sleep(8000)]); } catch (_) {}
         }
 
         // 启动序列：显示 boot 屏幕 Logo 2 秒后自动进入登录
