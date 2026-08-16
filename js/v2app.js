@@ -56,7 +56,8 @@
             try {
                 const ctrl = new AbortController();
                 const t = setTimeout(() => ctrl.abort(), 3000);
-                const r = await fetch(base + "/health", { cache: "no-store", signal: ctrl.signal });
+                const healthUrl = base.replace(/\/api\/v2\/?$/, "") + "/api/health";
+                const r = await fetch(healthUrl, { cache: "no-store", signal: ctrl.signal });
                 clearTimeout(t);
                 if (r.ok) {
                     API_BASE = base;
