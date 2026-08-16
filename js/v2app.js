@@ -749,7 +749,7 @@
     }
 
     function showQuickHelp() {
-        toastInfo('CrystalGate v1.7.0 - Minecraft Bedrock 机器人管理平台');
+        toastInfo('CrystalGate v1.7.6 - Minecraft Bedrock 机器人管理平台');
     }
 
     /** 4399 账号管理弹窗: 提取 sauth_json / 注册新账号 */
@@ -2690,6 +2690,11 @@
                 appendTerminal("  clear       → 清屏", "info");
                 showMainMenu();
                 return;
+            } else if (cmdTrim === "4") {
+                // 导入建筑: 输入文件名关键词搜索
+                state.menuMode = "import-search";
+                appendTerminal("→ 输入文件名关键词 (模糊搜索):", "info");
+                return;
             } else if (cmdTrim === "menu") {
                 showMainMenu();
                 return;
@@ -2697,6 +2702,123 @@
                 appendTerminal("❌ 无此选项: " + cmdTrim + " (输入 1/2/3 或 menu)", "warn");
                 return;
             }
+        }
+        if (state.menuMode === "import-menu") {
+            state.menuMode = "";
+            if (cmdTrim === "1") {
+                // 检查上次导入配置, 提示是否继续
+                if (state.lastImport && state.lastImport.file_name) {
+                    appendTerminal(`上次导入: ${state.lastImport.file_name}`, "info");
+                    appendTerminal("  [1] 继续上次导入  [2] 重新选择文件", "system");
+                    state.menuMode = "import-resume";
+                } else {
+                    state.menuMode = "import-search";
+                    appendTerminal("→ 输入文件名关键词 (模糊搜索):", "info");
+                }
+            } else if (cmdTrim === "2") {
+                appendTerminal("⚠️ 导出功能开发中", "warn");
+                showImportMenu();
+            } else if (cmdTrim === "3") {
+                appendTerminal("══ 导入帮助 ══", "system");
+                appendTerminal("  导入: 选择建筑文件 → 机器人执行 setblock/fill 命令", "info");
+                appendTerminal("  支持: bdx / mcworld / mcstructure / schematic / schem", "info");
+                appendTerminal("  文件存放: data/structures/ 目录", "info");
+                showImportMenu();
+            } else {
+                showMainMenu();
+            }
+            return;
+        }
+        if (state.menuMode === "import-resume") {
+            state.menuMode = "";
+            if (cmdTrim === "1" && state.lastImport) {
+                // 继续上次导入
+                state.importFile = state.lastImport;
+                appendTerminal(`继续导入: ${state.lastImport.file_name}`, "info");
+                appendTerminal("  [1] 确认导入  [2] 取消", "system");
+                state.menuMode = "import-confirm";
+            } else {
+                state.menuMode = "import-search";
+                appendTerminal("→ 输入文件名关键词 (模糊搜索):", "info");
+            }
+            return;
+        }
+        if (state.menuMode === "import-search") {
+            state.menuMode = "";
+            appendTerminal(`正在搜索建筑文件 "${cmdTrim}"...`, "info");
+            try {
+                const res = await api(`/files/my?keyword=${encodeURIComponent(cmdTrim)}`);
+                const files = (res && res.files) || [];
+                if (files.length === 0) {
+                    appendTerminal(`⚠️ 未找到包含 "${cmdTrim}" 的文件`, "warn");
+                    showMainMenu();
+                } else if (files.length === 1) {
+                    // 唯一匹配: 确认导入
+                    const f = files[0];
+                    appendTerminal(`找到 1 个文件: ${f.name} (${(f.size/1024).toFixed(1)}KB)`, "info");
+                    state.importFile = f;
+                    state.menuMode = "import-confirm";
+                    appendTerminal("  [1] 确认导入  [2] 取消", "system");
+                } else {
+                    // 多匹配: 列出选项
+                    appendTerminal(`── 找到 ${files.length} 个文件 ──`, "system");
+                    files.slice(0, 10).forEach((f, i) => {
+                        appendTerminal(`  [${i + 1}] ${f.name} (${(f.size/1024).toFixed(1)}KB)`, "info");
+                    });
+                    appendTerminal("  输入编号选择 (0 返回)", "system");
+                    state.importFiles = files;
+                    state.menuMode = "import-pick";
+                }
+            } catch (e) {
+                appendTerminal("❌ 搜索失败: " + (e.message || ""), "error");
+                showMainMenu();
+            }
+            return;
+        }
+        if (state.menuMode === "import-pick") {
+            const idx = parseInt(cmdTrim);
+            if (idx === 0) { showMainMenu(); return; }
+            const files = state.importFiles || [];
+            if (isNaN(idx) || idx < 1 || idx > files.length) {
+                appendTerminal("❌ 编号无效", "error");
+                state.menuMode = "import-search";
+                appendTerminal("→ 输入文件名关键词 (模糊搜索):", "info");
+                return;
+            }
+            const f = files[idx - 1];
+            state.importFile = f;
+            state.menuMode = "import-confirm";
+            appendTerminal(`选择: ${f.name}`, "info");
+            appendTerminal("  [1] 确认导入  [2] 取消", "system");
+            return;
+        }
+        if (state.menuMode === "import-confirm") {
+            state.menuMode = "";
+            if (cmdTrim === "1") {
+                const f = state.importFile;
+                if (!f) { showMainMenu(); return; }
+                appendTerminal(`开始导入: ${f.name}...`, "info");
+                appendTerminal("  进度将实时显示在控制台", "info");
+                // 调后端导入
+                try {
+                    const res = await api(`/bots/${state.currentBotId}/import`, {
+                        method: "POST",
+                        body: { file_path: f.path, file_name: f.name },
+                    });
+                    if (res && res.success) {
+                        appendTerminal("✅ 导入任务已提交", "success");
+                        state.lastImport = f;
+                    } else {
+                        appendTerminal(`❌ 导入失败: ${(res && res.message) || "未知"}`, "error");
+                    }
+                } catch (e) {
+                    appendTerminal("❌ 导入失败: " + (e.message || ""), "error");
+                }
+                showMainMenu();
+            } else {
+                showMainMenu();
+            }
+            return;
         }
         if (state.menuMode === "skin") {
             if (cmdTrim === "1") {
@@ -2809,6 +2931,11 @@
         }
 
         // 内置命令
+        // 特殊命令: 导入 (弹导入菜单)
+        if (cmdTrim === "导入" || cmdTrim === "import") {
+            showImportMenu();
+            return;
+        }
         if (cmdTrim === "clear" || cmdTrim === "cls") {
             clearTerminal();
             return;
@@ -2871,11 +2998,22 @@
         appendTerminal('║ ╚██████╗ ╚██████╔╝║', "system");
         appendTerminal('║  ╚═════╝   ╚═════╝   ║', "system");
         appendTerminal('║                                    ║', "system");
-        appendTerminal('║   CrystalGate  v1.7.0              ║', "system");
+        appendTerminal('║   CrystalGate  v1.7.6              ║', "system");
         appendTerminal('╚════════════════════════════════════╝', "system");
     }
 
     /** 启动机器人 — V1.5: 直接启动; 启动成功后显示 CG LOGO + 菜单 */
+    /** 导入菜单: 开始导入/导出/帮助 (NexusEgo 风格) */
+    function showImportMenu() {
+        state.menuMode = "import-menu";
+        appendTerminal("══ 建筑工具 ══", "system");
+        appendTerminal("  [1] 开始导入", "system");
+        appendTerminal("  [2] 导出建筑", "system");
+        appendTerminal("  [3] 帮助", "system");
+        appendTerminal("  [0] 返回", "system");
+        appendTerminal("  输入编号选择:", "info");
+    }
+
     /** 启动菜单: 启动/换皮肤/帮助 */
     function showStartMenu() {
         state.menuMode = "start-menu";
@@ -2951,6 +3089,7 @@
         appendTerminal("  [1] 皮肤管理", "system");
         appendTerminal("  [2] 查看状态", "system");
         appendTerminal("  [3] 帮助", "system");
+        appendTerminal("  [4] 导入建筑", "system");
         appendTerminal("────────────", "system");
     }
 
