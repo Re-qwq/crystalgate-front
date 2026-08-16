@@ -1140,6 +1140,7 @@
 
     /** 显示主应用 */
     function showApp() {
+        window.__cgAppReady = true;  // 标记应用已就绪, 阻止 boot 兜底脚本干预
         $("authScreen").classList.add("fade-out", "hidden");
         $("app").classList.remove("hidden");
         // 触发重排后再添加 visible 以启用过渡动画

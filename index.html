@@ -1804,9 +1804,12 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
     <div class="boot-version">Version <span id="bootVersion">v1.6.0</span></div>
     <script>
     // 兜底: 2.5秒后强制切换 (即使v2app.js加载失败也保证能看到登录页)
+    // 修复: 加全局标记, 登录成功(showApp)后不再强制显示登录页
     (function() {
+        window.__cgAppReady = false;
         setTimeout(function() {
             try {
+                if (window.__cgAppReady) return; // 应用已初始化完成, 不干预
                 var boot = document.getElementById("bootScreen");
                 var auth = document.getElementById("authScreen");
                 if (boot) boot.classList.add("fade-out");
