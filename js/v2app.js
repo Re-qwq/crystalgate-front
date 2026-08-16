@@ -2634,6 +2634,29 @@
         state.terminalHistoryIndex = state.terminalHistory.length;
 
         // ── 菜单模式 (TD 式交互) ──
+        if (state.menuMode === "start-menu") {
+            state.menuMode = "";
+            if (cmdTrim === "1") {
+                // 真正启动
+                doStartBot();
+            } else if (cmdTrim === "2") {
+                state.menuMode = "skin";
+                appendTerminal("══ 皮肤管理 ══", "system");
+                appendTerminal("  [1] 商城搜皮肤 (输入名字搜索)", "system");
+                appendTerminal("  [2] 搜索玩家皮肤", "system");
+                appendTerminal("  [3] 返回", "system");
+            } else if (cmdTrim === "3") {
+                appendTerminal("══ 帮助 ══", "system");
+                appendTerminal("  [1] 启动机器人 → 机器进入租赁服", "system");
+                appendTerminal("  [2] 换皮肤 → 搜索并换上皮肤", "system");
+                appendTerminal("  终端输入 /say 消息 → 机器人说话", "system");
+                appendTerminal("  终端输入 //命令 → 机器人执行命令", "system");
+                showStartMenu();
+            } else {
+                showStartMenu();
+            }
+            return;
+        }
         if (state.menuMode === "start-confirm") {
             await handleLikeConfirm(cmdTrim);
             return;
@@ -2848,6 +2871,21 @@
     }
 
     /** 启动机器人 — V1.5: 直接启动; 启动成功后显示 CG LOGO + 菜单 */
+    /** 启动菜单: 启动/换皮肤/帮助 */
+    function showStartMenu() {
+        state.menuMode = "start-menu";
+        appendTerminal("══ 启动菜单 ══", "system");
+        appendTerminal("  [1] 启动机器人", "system");
+        appendTerminal("  [2] 换皮肤", "system");
+        appendTerminal("  [3] 帮助", "system");
+        appendTerminal("  输入编号选择:", "info");
+    }
+
+    /** 真正执行启动 (菜单选1后调用) */
+    async function doStartBot() {
+        startBot();
+    }
+
     async function startBot() {
         if (isPanelLocked()) { toastWarn("面板已锁定，无法操作"); return; }
         if (!ensureBotExists()) return;
@@ -2855,6 +2893,10 @@
             toastWarn("请先创建面板机器人");
             return;
         }
+        // 启动菜单: 先弹菜单 (启动/换皮肤/帮助), 选1才真正启动
+        showStartMenu();
+        return;
+
         const startBtn = $("btnStartBot");
         try {
             startBtn.disabled = true;
@@ -2866,16 +2908,6 @@
             if (res.success) {
                 printCGLogo();
                 appendTerminal("✅ 机器人已启动!", "success");
-                // 非租赁服不提示点赞
-                const serverType = (state.panelBot && state.panelBot.server_type) || "rental";
-                if (serverType === "rental") {
-                    state.menuMode = "start-confirm";
-                    appendTerminal("", "system");
-                    appendTerminal("→ 是否给租赁服点赞? (N/y)", "info");
-                    appendTerminal("  y=进服后自动点赞  n=不点赞 (直接回车=不点赞)", "info");
-                } else {
-                    showMainMenu();
-                }
                 toastSuccess("机器人已启动");
                 $("btnStartBot").classList.add("hidden");
                 $("btnStopBot").classList.remove("hidden");
