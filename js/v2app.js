@@ -2546,12 +2546,8 @@
     function refreshConsoleInfo() {
         const node = $("consoleInfo");
         if (!node) return;
-        const wsPart = `WS: ${state.wsStatusText || "未连接"}`;
-        if (state.panelInfoText) {
-            node.textContent = `${wsPart} | ${state.panelInfoText}`;
-        } else {
-            node.textContent = wsPart;
-        }
+        // 只显示面板信息 (隐藏 WS 连接状态细节, 静默重连)
+        node.textContent = state.panelInfoText || "";
     }
 
     /**
@@ -3051,19 +3047,6 @@
     }
 
     /** 打印 CG 艺术字 LOGO (等宽一行, 对称不换行) */
-    function printCGLogo() {
-        appendTerminal('╔════════════════════════════════════╗', "system");
-        appendTerminal('║  ██████╗  ██████╗    ║', "system");
-        appendTerminal('║ ██╔════╝ ██╔════╝  ║', "system");
-        appendTerminal('║ ██║      ██║  ███╗       ║', "system");
-        appendTerminal('║ ██║      ██║   ██║        ║', "system");
-        appendTerminal('║ ╚██████╗ ╚██████╔╝║', "system");
-        appendTerminal('║  ╚═════╝   ╚═════╝   ║', "system");
-        appendTerminal('║                                    ║', "system");
-        appendTerminal('║   CrystalGate  v1.7.7              ║', "system");
-        appendTerminal('╚════════════════════════════════════╝', "system");
-    }
-
     /** 启动机器人 — V1.5: 直接启动; 启动成功后显示 CG LOGO + 菜单 */
     /** 导入菜单: 开始导入/导出/帮助 (NexusEgo 风格) */
     function showImportMenu() {
@@ -3118,7 +3101,6 @@
                 body: { like: false, skin_name: "", welcome: false },
             });
             if (res.success) {
-                printCGLogo();
                 appendTerminal("✅ 机器人已启动!", "success");
                 toastSuccess("机器人已启动");
                 $("btnStartBot").classList.add("hidden");

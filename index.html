@@ -167,15 +167,6 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
     overflow: hidden;
 }
 #bootScreen.fade-out { opacity: 0; visibility: hidden; pointer-events: none; }
-.boot-logo {
-    font-family: var(--font-mono);
-    font-size: 22px;
-    line-height: 1.25;
-    margin: 0 0 16px 0;
-    letter-spacing: 0;
-    transform: scale(1.2);
-    transform-origin: center;
-}
 @keyframes bootGlow {
     from { filter: brightness(0.85); }
     to { filter: brightness(1.15); }
@@ -1656,8 +1647,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
     .captcha-wrap { flex-direction: column; align-items: stretch; }
     .captcha-img-box { width: 100%; min-height: 56px; height: 56px; }
     .auth-card { padding: 24px 20px; }
-    .boot-logo { font-size: 9px; }
-    .panel-detail-actions { width: 100%; }
+        .panel-detail-actions { width: 100%; }
     .panel-detail-actions .btn { flex: 1; }
     .runner-cwd-timeout { flex-direction: column; }
     .runner-timeout-group { width: 100%; }
@@ -1798,11 +1788,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
      Boot Screen
      ========================================================================== -->
 <div class="screen" id="bootScreen">
-    <pre class="boot-logo"><span class="boot-gradient-1"><span class="boot-char">   ___      _            _  ___      _   </span></span>
-<span class="boot-gradient-1"><span class="boot-char">  / __|_ __| |__  _ _ __| |/ __|__ _| |_ ___</span></span>
-<span class="boot-gradient-2"><span class="boot-char"> | (__| '__| '_ \| '_/ _| | (_ / _` |  _/ -_)</span></span>
-<span class="boot-gradient-1"><span class="boot-char">  \___|_|  |_.__/|_| \__|_|\___\__,_|\__\___|</span></span></pre>
-    <div class="boot-version">Version <span id="bootVersion">v1.7.7</span></div>
+        <div class="boot-version">Version <span id="bootVersion">v1.7.7</span></div>
     <script>
     // 兜底: 2.5秒后强制切换 (即使v2app.js加载失败也保证能看到登录页)
     // 修复: 加全局标记, 登录成功(showApp)后不再强制显示登录页
