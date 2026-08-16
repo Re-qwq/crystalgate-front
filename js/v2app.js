@@ -28,13 +28,19 @@
     /** 后端地址配置加载 Promise (init 等待它完成再进面板) */
     let backendConfigReady = null;
 
-    /** 启动时尝试加载远端后端地址 (失败则回退同源) */
+    /** 启动时加载后端地址 (本地 config 优先, Gist 兜底, 最后同源) */
     backendConfigReady = (async function loadBackendConfig() {
-        // 从 Gist 读取后端地址列表 (可能有多个隧道, 自动探测哪个活着)
+        // 1. 本地配置 (backend-config.js, 由部署脚本自动更新)
         let candidates = [];
         try {
+            if (window.__CG_BACKENDS && Array.isArray(window.__CG_BACKENDS)) {
+                candidates = candidates.concat(window.__CG_BACKENDS);
+            }
+        } catch (_) {}
+        // 2. Gist 远端配置 (可选, 国内可能被墙, 失败忽略)
+        try {
             const ctrl = new AbortController();
-            const t = setTimeout(() => ctrl.abort(), 8000);
+            const t = setTimeout(() => ctrl.abort(), 5000);
             const resp = await fetch(BACKEND_CONFIG_URL + "?t=" + Date.now(), { cache: "no-store", signal: ctrl.signal });
             clearTimeout(t);
             if (resp.ok) {
@@ -44,8 +50,8 @@
                     cfg.backups.forEach(b => candidates.push(b));
                 }
             }
-        } catch (_) { /* 读取失败, 用空列表 */ }
-        // 逐个探测存活 (3秒超时), 用第一个能通的
+        } catch (_) { /* 忽略 */ }
+        // 3. 逐个探测存活 (3秒超时), 用第一个能通的
         for (const base of candidates) {
             try {
                 const ctrl = new AbortController();
