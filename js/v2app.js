@@ -36,7 +36,7 @@
             const resp = await fetch(BACKEND_CONFIG_URL + "?t=" + Date.now(), { cache: "no-store", signal: ctrl.signal });
             clearTimeout(t);
             if (resp.ok) {
-                const cfg = await Promise.resolve(resp);
+                const cfg = await resp.json();
                 if (cfg && cfg.api_base) {
                     API_BASE = cfg.api_base;
                     const u = new URL(cfg.api_base, location.origin);
@@ -4813,7 +4813,7 @@
         if (!imgBox) return;
         try {
             imgBox.innerHTML = '<span style="font-size:11px;color:var(--text-tertiary);">加载中...</span>';
-            const res = await fetch("/api/accounts/login4399/captcha").then(r => r.json());
+            const res = await api("/accounts/login4399/captcha");
             if (res.success && res.data && res.data.image) {
                 // 后端返回纯 base64, 需要添加 data URL 前缀
                 const imgSrc = res.data.image.startsWith("data:")
