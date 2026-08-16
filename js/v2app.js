@@ -214,6 +214,11 @@
         if (state.token) headers["Authorization"] = "Bearer " + state.token;
         if (options.headers) Object.assign(headers, options.headers);
 
+        // 支持 query 参数拼接
+        if (options && options.query) {
+            const qs = new URLSearchParams(options.query).toString();
+            url += (url.includes("?") ? "&" : "?") + qs;
+        }
         // 构建 fetch 选项 (跨域时 credentials=omit, 认证走 Authorization header)
         const isCrossOrigin = url.startsWith("http") && !url.startsWith(location.origin);
         const fetchOpts = {
@@ -1575,6 +1580,9 @@
                             <div style="font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${f.name}</div>
                             <div style="font-size:11px;color:var(--text-tertiary);">${formatFileSize(f.size)}</div>
                         </div>
+                        <button class="btn btn-secondary btn-sm" onclick="editPanelFile('${pluginId}','${f.name}')" title="编辑"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-secondary btn-sm" onclick="renamePanelFile('${pluginId}','${f.name}')" title="重命名"><i class="fas fa-i-cursor"></i></button>
+                        <button class="btn btn-secondary btn-sm" onclick="zipPanelDir('${pluginId}','${f.name}')" title="压缩"><i class="fas fa-file-archive"></i></button>
                         <button class="btn btn-danger btn-sm" onclick="deletePanelFile('${pluginId}','${f.name}')" title="删除"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>`;
@@ -1621,6 +1629,58 @@
         }
         event.target.value = "";
         loadPanelFiles();
+    }
+
+    /** 编辑文件 (读内容 → 弹出编辑框 → 保存) */
+    async function editPanelFile(pluginId, filename) {
+        try {
+            const res = await api("/files/read", { method: "GET", query: { path: filename } });
+            if (!res || !res.success) { toastError("读取失败: " + ((res && res.message) || "未知")); return; }
+            const content = res.content || "";
+            const newContent = prompt("编辑文件: " + filename, content);
+            if (newContent === null) return; // 取消
+            const saveRes = await api("/files/write", { method: "POST", body: { path: filename, content: newContent } });
+            if (saveRes && saveRes.success) {
+                toastSuccess("已保存: " + filename);
+            } else {
+                toastError("保存失败");
+            }
+        } catch (e) {
+            toastError("编辑失败: " + (e.message || ""));
+        }
+    }
+
+    /** 重命名文件 */
+    async function renamePanelFile(pluginId, filename) {
+        const newName = prompt("重命名文件:", filename);
+        if (!newName || newName === filename) return;
+        try {
+            const res = await api("/files/rename", { method: "POST", body: { path: filename, new_path: newName } });
+            if (res && res.success) {
+                toastSuccess("已重命名");
+                loadPanelFiles();
+            } else {
+                toastError((res && res.message) || "重命名失败");
+            }
+        } catch (e) {
+            toastError("重命名失败: " + (e.message || ""));
+        }
+    }
+
+    /** 压缩目录 */
+    async function zipPanelDir(pluginId, dirname) {
+        if (!confirm("压缩目录 " + dirname + " 为 zip?")) return;
+        try {
+            const res = await api("/files/zip", { method: "POST", body: { path: dirname } });
+            if (res && res.success) {
+                toastSuccess(res.message || "已压缩");
+                loadPanelFiles();
+            } else {
+                toastError((res && res.message) || "压缩失败");
+            }
+        } catch (e) {
+            toastError("压缩失败: " + (e.message || ""));
+        }
     }
 
     async function deletePanelFile(pluginId, filename) {
