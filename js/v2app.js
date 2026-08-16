@@ -36,7 +36,7 @@
             const resp = await fetch(BACKEND_CONFIG_URL + "?t=" + Date.now(), { cache: "no-store", signal: ctrl.signal });
             clearTimeout(t);
             if (resp.ok) {
-                const cfg = await resp.json();
+                const cfg = await Promise.resolve(resp);
                 if (cfg && cfg.api_base) {
                     API_BASE = cfg.api_base;
                     const u = new URL(cfg.api_base, location.origin);
@@ -581,9 +581,8 @@
 
         // 从后端获取版本号并更新前端显示
         try {
-            const res = await fetch('/api/v2/system/version');
-            if (res.ok) {
-                const data = await res.json();
+            const data = await api("/system/version");
+            if (data) {
                 if (data.success && data.data && data.data.version) {
                     const ver = 'v' + data.data.version;
                     const bootVer = document.getElementById('bootVersion');
@@ -726,7 +725,7 @@
     }
 
     function showQuickHelp() {
-        toastInfo('CrystalGate v1.6.2 - Minecraft Bedrock 机器人管理平台');
+        toastInfo('CrystalGate v1.7.0 - Minecraft Bedrock 机器人管理平台');
     }
 
     /** 4399 账号管理弹窗: 提取 sauth_json / 注册新账号 */
@@ -791,9 +790,7 @@
         document.body.appendChild(modal);
 
         // 加载机器人列表 (过滤已停止的)
-        fetch('/api/v2/bots', { headers: getAuthHeaders() })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
+        api('/bots').then(function(data) {
                 var select = document.getElementById('botLaunchSelect');
                 if (!select) return;
                 select.innerHTML = '';
@@ -837,17 +834,13 @@
             if (!botId) return;
 
             // 更新机器人平台模式 (PUT /config)
-            fetch('/api/v2/bots/' + botId + '/config', {
+            api('/bots/' + botId + '/config', {
                 method: 'PUT',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({ platform_type: mode })
+                body: { platform_type: mode }
             }).then(function() {
                 // 启动机器人
-                return fetch('/api/v2/bots/' + botId + '/start', {
-                    method: 'POST',
-                    headers: getAuthHeaders()
-                });
-            }).then(function(r) { return r.json(); })
+                return api('/bots/' + botId + '/start', { method: 'POST' });
+            })
             .then(function(data) {
                 modal.remove();
                 toastSuccess(data.message || '机器人已启动');
@@ -2832,7 +2825,7 @@
         appendTerminal('║ ╚██████╗ ╚██████╔╝║', "system");
         appendTerminal('║  ╚═════╝   ╚═════╝   ║', "system");
         appendTerminal('║                                    ║', "system");
-        appendTerminal('║   CrystalGate  v1.6.2              ║', "system");
+        appendTerminal('║   CrystalGate  v1.7.0              ║', "system");
         appendTerminal('╚════════════════════════════════════╝', "system");
     }
 
@@ -5755,12 +5748,12 @@
             toastInfo("正在解析文件...");
             try {
                 const token = state.token || localStorage.getItem(TOKEN_KEY) || "";
-                const resp = await fetch("/api/v2/builder/parse", {
+                const resp = await api("/builder/parse", {
                     method: "POST",
                     headers: { "Authorization": "Bearer " + token },
                     body: formData,
                 });
-                const data = await resp.json();
+                const data = await Promise.resolve(resp);
                 if (data.success) {
                     const info = data.data;
                     $("builderParseResult").style.display = "block";
@@ -5828,12 +5821,12 @@
             toastInfo("正在生成像素画...");
             try {
                 const token = state.token || localStorage.getItem(TOKEN_KEY) || "";
-                const resp = await fetch("/api/v2/builder/pixel-art", {
+                const resp = await api("/builder/pixel-art", {
                     method: "POST",
                     headers: { "Authorization": "Bearer " + token },
                     body: formData,
                 });
-                const data = await resp.json();
+                const data = await Promise.resolve(resp);
                 if (data.success) {
                     const info = data.data;
                     $("builderPixelArtResult").style.display = "block";
@@ -5946,12 +5939,12 @@
 
                 try {
                     const token = state.token || localStorage.getItem(TOKEN_KEY) || "";
-                    const resp = await fetch("/api/v2/builder/convert", {
+                    const resp = await api("/builder/convert", {
                         method: "POST",
                         headers: { "Authorization": "Bearer " + token },
                         body: formData,
                     });
-                    const data = await resp.json();
+                    const data = await Promise.resolve(resp);
                     if (progressEl) progressEl.style.display = "none";
 
                     if (data.success && data.data) {
@@ -6031,12 +6024,12 @@
             toastInfo("正在生成音乐建筑...");
             try {
                 const token = state.token || localStorage.getItem(TOKEN_KEY) || "";
-                const resp = await fetch("/api/v2/builder/music", {
+                const resp = await api("/builder/music", {
                     method: "POST",
                     headers: { "Authorization": "Bearer " + token },
                     body: formData,
                 });
-                const data = await resp.json();
+                const data = await Promise.resolve(resp);
                 if (data.success && data.data) {
                     const info = data.data;
                     const resultEl = $("builderMusicResult");
@@ -6103,12 +6096,12 @@
             toastInfo("正在生成皮肤雕像...");
             try {
                 const token = state.token || localStorage.getItem(TOKEN_KEY) || "";
-                const resp = await fetch("/api/v2/builder/skin-statue", {
+                const resp = await api("/builder/skin-statue", {
                     method: "POST",
                     headers: { "Authorization": "Bearer " + token },
                     body: formData,
                 });
-                const data = await resp.json();
+                const data = await Promise.resolve(resp);
                 if (data.success && data.data) {
                     const info = data.data;
                     const resultEl = $("builderSkinResult");
@@ -6216,12 +6209,12 @@
             toastInfo("正在扫描命令方块链...");
             try {
                 const token = state.token || localStorage.getItem(TOKEN_KEY) || "";
-                const resp = await fetch("/api/v2/builder/scan-command-chains", {
+                const resp = await api("/builder/scan-command-chains", {
                     method: "POST",
                     headers: { "Authorization": "Bearer " + token },
                     body: formData,
                 });
-                const data = await resp.json();
+                const data = await Promise.resolve(resp);
                 if (data.success) {
                     $("builderCmdChainResult").style.display = "block";
                     const chains = data.data.chains || [];
@@ -6283,12 +6276,12 @@
             toastInfo("正在导出 MCF...");
             try {
                 const token = state.token || localStorage.getItem(TOKEN_KEY) || "";
-                const resp = await fetch("/api/v2/builder/command-chain-to-mcf", {
+                const resp = await api("/builder/command-chain-to-mcf", {
                     method: "POST",
                     headers: { "Authorization": "Bearer " + token },
                     body: formData,
                 });
-                const data = await resp.json();
+                const data = await Promise.resolve(resp);
                 if (data.success && data.data.file_id) {
                     window.open(`/api/v2/builder/download/${data.data.file_id}?token=${encodeURIComponent(state.token||"")}&filename=command_chain.mcf`, "_blank");
                     toastSuccess(`MCF 导出成功 (${data.data.block_count} 个方块)`);
@@ -6309,12 +6302,12 @@
             toastInfo("正在转换...");
             try {
                 const token = state.token || localStorage.getItem(TOKEN_KEY) || "";
-                const resp = await fetch("/api/v2/builder/mcf-to-mcstructure", {
+                const resp = await api("/builder/mcf-to-mcstructure", {
                     method: "POST",
                     headers: { "Authorization": "Bearer " + token },
                     body: formData,
                 });
-                const data = await resp.json();
+                const data = await Promise.resolve(resp);
                 if (data.success && data.data.file_id) {
                     window.open(`/api/v2/builder/download/${data.data.file_id}?token=${encodeURIComponent(state.token||"")}&filename=converted.mcstructure`, "_blank");
                     toastSuccess(`转换成功 (${data.data.block_count} 个命令方块)`);
@@ -6738,7 +6731,7 @@
     window.downloadRunnerFile = async function(filename) {
         try {
             const token = state.token || localStorage.getItem(TOKEN_KEY) || "";
-            const resp = await fetch("/api/v2/runner/files/" + encodeURIComponent(filename) + "/download", {
+            const resp = await api("/runner/files/" + encodeURIComponent(filename) + "/download", {
                 headers: { "Authorization": "Bearer " + token },
             });
             if (!resp.ok) {
@@ -6865,12 +6858,12 @@
         formData.append("overwrite", "true");
         try {
             const token = state.token || localStorage.getItem(TOKEN_KEY) || "";
-            const resp = await fetch("/api/v2/runner/upload", {
+            const resp = await api("/runner/upload", {
                 method: "POST",
                 headers: { "Authorization": "Bearer " + token },
                 body: formData,
             });
-            const data = await resp.json();
+            const data = await Promise.resolve(resp);
             if (data.success) {
                 toastSuccess("上传成功: " + (data.data?.filename || data.filename || ""));
                 loadRunnerFiles();
