@@ -591,62 +591,43 @@
     let xtermInstance = null;
     let xtermBuffer = [];
 
-    /** 初始化 xterm.js 真终端 (挂在终端输出区, 双模式可切换) */
+    /** 初始化 xterm.js 真终端 (默认启用, 与 Termux 同款渲染) */
     function initXterm() {
         try {
             if (typeof Terminal === "undefined") return;
             const mountEl = $("terminalOutput");
             if (!mountEl) return;
-            // 只在用户点击"切换终端"时启用 xterm
-            const btn = document.createElement("button");
-            btn.className = "btn btn-ghost btn-sm";
-            btn.id = "xtermToggleBtn";
-            btn.innerHTML = '<i class="fas fa-terminal"></i> 终端模式';
-            btn.title = "切换到 xterm 真实终端渲染";
-            const toolbar = mountEl.previousElementSibling;
-            if (toolbar) toolbar.appendChild(btn);
-            btn.addEventListener("click", () => {
-                if (!xtermInstance) {
-                    mountEl.innerHTML = "";
-                    xtermInstance = new Terminal({
-                        cursorBlink: true,
-                        fontSize: 13,
-                        fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-                        theme: {
-                            background: "#0d1117",
-                            foreground: "#e6edf3",
-                            cursor: "#58a6ff",
-                            black: "#161b22", red: "#f85149", green: "#3fb950",
-                            yellow: "#d29922", blue: "#58a6ff", magenta: "#bc8cff",
-                            cyan: "#39c5cf", white: "#e6edf3",
-                        },
-                        scrollback: 2000,
-                    });
-                    xtermInstance.open(mountEl);
-                    // 回放已有日志
-                    xtermBuffer.forEach(line => xtermInstance.writeln(line));
-                    xtermInstance.onData(data => {
-                        const input = $("terminalInput");
-                        if (!input) return;
-                        if (data === "\r") {
-                            handleTerminalInput();
-                        } else if (data === "\u007f") {
-                            input.value = input.value.slice(0, -1);
-                        } else {
-                            input.value += data;
-                        }
-                    });
-                    btn.innerHTML = '<i class="fas fa-exchange-alt"></i> 简易模式';
-                    appendTerminal("已切换到 xterm 真实终端", "success");
+            // 默认直接启用真终端 (无切换按钮, 面板终端=真终端)
+            mountEl.innerHTML = "";
+            xtermInstance = new Terminal({
+                cursorBlink: true,
+                fontSize: 13,
+                fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                theme: {
+                    background: "#0d1117",
+                    foreground: "#e6edf3",
+                    cursor: "#58a6ff",
+                    black: "#161b22", red: "#f85149", green: "#3fb950",
+                    yellow: "#d29922", blue: "#58a6ff", magenta: "#bc8cff",
+                    cyan: "#39c5cf", white: "#e6edf3",
+                },
+                scrollback: 3000,
+            });
+            xtermInstance.open(mountEl);
+            // 键盘事件 → 输入框 (保持原有输入逻辑不变)
+            xtermInstance.onData(data => {
+                const input = $("terminalInput");
+                if (!input) return;
+                if (data === "\r") {
+                    handleTerminalInput();
+                } else if (data === "\u007f") {
+                    input.value = input.value.slice(0, -1);
                 } else {
-                    // 切回简易模式
-                    xtermInstance.dispose();
-                    xtermInstance = null;
-                    mountEl.innerHTML = '<div class="terminal-line system"><span class="ts">[SYSTEM]</span> CrystalGate 控制台已就绪</div>';
-                    btn.innerHTML = '<i class="fas fa-terminal"></i> 终端模式';
+                    input.value += data;
                 }
             });
-        } catch (e) { /* xterm 未加载, 保持简易模式 */ }
+            xtermInstance.writeln("CrystalGate 控制台已就绪 (真终端模式)");
+        } catch (e) { /* xterm 未加载, 回退 DOM 简易模式 */ }
     }
 
     /** 终端输出重定向: 同时写 xterm (如果启用) */
@@ -692,6 +673,13 @@
 
         // 初始化 xterm 真终端 (可选)
         initXterm();
+        // 输入框与 xterm 焦点联动
+        const _ti = $("terminalInput");
+        if (_ti) {
+            _ti.addEventListener("focus", () => {
+                if (xtermInstance) { try { xtermInstance.focus(); } catch (e) {} }
+            });
+        }
 
         // 等待后端地址配置加载完成 (最多 8 秒, 失败回退同源)
         if (backendConfigReady) {
