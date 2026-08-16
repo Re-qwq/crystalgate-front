@@ -1,0 +1,3922 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0d1117">
+    <meta name="description" content="CrystalGate - Minecraft Bedrock 机器人管理平台">
+    <title>CrystalGate · 网易租赁服机器人平台</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/main.css?v=1.4">
+    <script>
+    // ═══ 安全防护 (防F12/防调试) ═══
+    (function(){
+      // 禁止右键菜单
+      document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+      // 禁止F12/DevTools快捷键
+      document.addEventListener('keydown', function(e){
+        if (e.key === 'F12' || 
+            (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+            (e.ctrlKey && e.key === 'U')) {
+          e.preventDefault();
+          return false;
+        }
+      });
+      // DevTools检测 (定时)
+      let devWarned = false;
+      setInterval(function(){
+        const before = new Date().getTime();
+        debugger;
+        const after = new Date().getTime();
+        if (after - before > 100 && !devWarned) {
+          devWarned = true;
+          console.log('%c⚠️ 检测到开发者工具, 请勿调试源码', 'color:#f85149;font-size:20px');
+        }
+      }, 2000);
+      // 禁止选中
+      document.addEventListener('selectstart', function(e){ e.preventDefault(); });
+    })();
+    </script>
+    <style>
+/* ==========================================================================
+   CrystalGate v2 - GitHub Dark Inspired Theme
+   ========================================================================== */
+
+:root {
+    --bg-app: #0d1117;
+    --bg-card: #161b22;
+    --bg-elevated: #1c2129;
+    --bg-hover: #21262d;
+    --bg-active: #2d333b;
+    --bg-sidebar: #0d1117;
+    --bg-input: #0d1117;
+    --text-primary: #e6edf3;
+    --text-secondary: #7d8590;
+    --text-tertiary: #484f58;
+    --color-primary: #58a6ff;
+    --color-success: #3fb950;
+    --color-warning: #d29922;
+    --color-danger: #f85149;
+    --border-default: #30363d;
+    --border-muted: #21262d;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-mono: "SF Mono", "Fira Code", "JetBrains Mono", Menlo, Consolas, monospace;
+
+    --gradient-primary: linear-gradient(135deg, #58a6ff 0%, #3fb950 100%);
+    --gradient-accent: linear-gradient(135deg, #58a6ff 0%, #a371f7 100%);
+    --gradient-danger: linear-gradient(135deg, #f85149 0%, #db6d28 100%);
+
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md: 0 3px 12px rgba(0,0,0,0.4);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,0.5);
+    --shadow-glow: 0 0 24px rgba(88,166,255,0.15);
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+    --radius-full: 9999px;
+
+    --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --topbar-height: 56px;
+    --sidebar-width: 240px;
+}
+
+/* ---- Light / Day Theme ---- */
+[data-theme="light"] {
+    --bg-app: #f6f8fa;
+    --bg-card: #ffffff;
+    --bg-elevated: #f6f8fa;
+    --bg-hover: #eaeef2;
+    --bg-active: #d8dee4;
+    --bg-sidebar: #ffffff;
+    --bg-input: #f6f8fa;
+    --bg-canvas: #f0f3f6;
+    --text-primary: #1f2328;
+    --text-secondary: #656d76;
+    --text-tertiary: #8c959f;
+    --color-primary: #0969da;
+    --color-primary-hover: #218bff;
+    --color-primary-active: #0550ae;
+    --color-primary-bg: rgba(9, 105, 218, 0.1);
+    --color-success: #1a7f37;
+    --color-success-bg: rgba(26, 127, 55, 0.1);
+    --color-warning: #9a6700;
+    --color-warning-bg: rgba(154, 103, 0, 0.1);
+    --color-danger: #cf222e;
+    --color-danger-bg: rgba(207, 34, 46, 0.1);
+    --border-default: #d0d7de;
+    --border-muted: #d8dee4;
+    --bg-overlay: rgba(140, 149, 159, 0.2);
+}
+
+/* ---- Reset & Base ---- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; width: 100%; }
+body {
+    font-family: var(--font-sans);
+    background: var(--bg-app);
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+a { color: var(--color-primary); text-decoration: none; transition: color var(--transition); }
+a:hover { text-decoration: underline; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, select, textarea { font-family: inherit; font-size: inherit; color: var(--text-primary); }
+.mono { font-family: var(--font-mono); }
+.hidden { display: none !important; }
+
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: var(--radius-full); }
+::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+* { scrollbar-width: thin; scrollbar-color: var(--border-default) transparent; }
+
+/* ---- Selection ---- */
+::selection { background: rgba(88,166,255,0.3); color: var(--text-primary); }
+
+/* ==========================================================================
+   Screens (Boot / Auth / App)
+   ========================================================================== */
+.screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+/* ---- Boot Screen (TD风格) ---- */
+#bootScreen {
+    background: #0a0e14;
+    flex-direction: column;
+    gap: 20px;
+    transition: opacity 0.6s ease, visibility 0.6s ease;
+    overflow: hidden;
+}
+#bootScreen.fade-out { opacity: 0; visibility: hidden; pointer-events: none; }
+.boot-logo {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    line-height: 1.25;
+    margin: 0 0 16px 0;
+    letter-spacing: 0;
+    transform: scale(1.2);
+    transform-origin: center;
+}
+@keyframes bootGlow {
+    from { filter: brightness(0.85); }
+    to { filter: brightness(1.15); }
+}
+.boot-gradient-1 .boot-char { color: #58a6ff; }
+.boot-gradient-2 .boot-char { color: #a371f7; }
+.boot-info {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: #7d8590;
+    text-align: center;
+    line-height: 1.8;
+    max-width: 600px;
+    padding: 0 20px;
+}
+.boot-info a { color: #58a6ff; text-decoration: none; }
+.boot-version {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-secondary);
+    letter-spacing: 1px;
+    margin-top: 4px;
+}
+.boot-version span { color: var(--color-success); font-weight: 600; }
+.boot-loader {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+}
+.boot-loader .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--color-primary);
+    animation: bootBounce 1.2s ease-in-out infinite;
+}
+.boot-loader .dot:nth-child(2) { animation-delay: 0.15s; }
+.boot-loader .dot:nth-child(3) { animation-delay: 0.3s; }
+@keyframes bootBounce {
+    0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+    40% { transform: scale(1.2); opacity: 1; }
+}
+/* TD风格菜单选项 */
+.boot-menu {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: #e6edf3;
+    text-align: left;
+    line-height: 2;
+    max-width: 480px;
+    width: 100%;
+    padding: 16px 24px;
+    border: 1px solid #21262d;
+    border-radius: 8px;
+    background: rgba(22,27,34,0.8);
+}
+.boot-menu .menu-num { color: #3fb950; font-weight: bold; }
+.boot-menu .menu-primary { color: #58a6ff; }
+.boot-menu .menu-magenta { color: #db61a2; }
+.boot-menu .menu-gold { color: #d29922; }
+.boot-menu .menu-green { color: #3fb950; }
+.boot-menu .menu-red { color: #f85149; }
+.boot-menu .menu-gray { color: #7d8590; }
+/* 面板锁定遮罩 */
+.panel-lock-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,14,20,0.92);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 24px;
+    animation: fadeIn 0.3s ease;
+}
+.panel-lock-icon {
+    font-size: 48px;
+    color: #f85149;
+}
+.panel-lock-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #e6edf3;
+    font-family: var(--font-mono);
+}
+.panel-lock-msg {
+    font-size: 14px;
+    color: #7d8590;
+    text-align: center;
+    max-width: 400px;
+    line-height: 1.6;
+}
+.panel-lock-btn {
+    background: var(--gradient-primary);
+    color: #fff;
+    border: none;
+    padding: 10px 32px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.panel-lock-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(88,166,255,0.4);
+}
+
+/* ---- Auth Screen ---- */
+#authScreen {
+    background:
+        radial-gradient(ellipse 80% 60% at 20% 0%, rgba(88,166,255,0.08) 0%, transparent 50%),
+        radial-gradient(ellipse 60% 60% at 80% 100%, rgba(63,185,80,0.06) 0%, transparent 50%),
+        var(--bg-app);
+    transition: opacity 0.4s ease;
+    overflow-y: auto;
+    align-items: flex-start;
+    padding-top: 60px;
+    padding-bottom: 120px;
+}
+#authScreen.fade-out { opacity: 0; visibility: hidden; pointer-events: none; }
+.auth-wrapper {
+    width: 100%;
+    max-width: 440px;
+    padding: 24px;
+    animation: authSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes authSlideUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.auth-card {
+    background: var(--bg-card);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    padding: 36px 32px;
+    box-shadow: var(--shadow-lg);
+}
+.auth-header { text-align: center; margin-bottom: 28px; }
+.auth-logo {
+    width: 56px; height: 56px;
+    margin: 0 auto 16px;
+    border-radius: var(--radius-md);
+    background: var(--gradient-primary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; color: #fff;
+    box-shadow: 0 8px 24px rgba(88,166,255,0.3);
+}
+.auth-title {
+    font-size: 22px; font-weight: 700;
+    background: var(--gradient-accent);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 0.5px;
+}
+.auth-subtitle {
+    font-size: 13px; color: var(--text-secondary);
+    margin-top: 6px;
+}
+.auth-tabs {
+    display: flex;
+    background: var(--bg-input);
+    border: 1px solid var(--border-muted);
+    border-radius: var(--radius-md);
+    padding: 4px;
+    margin-bottom: 24px;
+}
+.auth-tab {
+    flex: 1;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    transition: all var(--transition);
+}
+.auth-tab.active {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-sm);
+}
+.auth-form { display: flex; flex-direction: column; gap: 16px; }
+.auth-form.hidden { display: none; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.3px;
+    display: flex; align-items: center; gap: 6px;
+}
+.form-label i { font-size: 11px; color: var(--text-tertiary); }
+.form-input {
+    background: var(--bg-input);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+    font-size: 14px;
+    color: var(--text-primary);
+    transition: border-color var(--transition), box-shadow var(--transition);
+    outline: none;
+    width: 100%;
+}
+.form-input::placeholder { color: var(--text-tertiary); }
+.form-input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(88,166,255,0.12);
+}
+.form-input.error { border-color: var(--color-danger); }
+.form-row { display: flex; gap: 12px; }
+.form-row > .form-group { flex: 1; }
+.captcha-wrap {
+    display: flex; gap: 10px; align-items: flex-end;
+}
+.captcha-wrap .form-group { flex: 1; }
+.captcha-img-box {
+    /* 容器至少 56px 高, 容纳 50px 验证码图片并留出内边距, 防止顶部被裁切 */
+    width: 170px;
+    min-height: 56px;
+    height: 56px;
+    padding: 3px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    background: var(--bg-input);
+    overflow: visible;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    transition: border-color var(--transition);
+}
+.captcha-img-box:hover { border-color: var(--color-primary); }
+/* 使用 contain 确保整张验证码图片完整显示, 不被裁切 */
+.captcha-img-box img {
+    width: 100%;
+    height: 100%;
+    max-height: 50px;
+    object-fit: contain;
+    border-radius: calc(var(--radius-md) - 2px);
+}
+.captcha-img-box .captcha-placeholder { color: var(--text-tertiary); font-size: 11px; }
+
+/* ---- Buttons ---- */
+.btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 9px 16px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition);
+    border: 1px solid transparent;
+    white-space: nowrap;
+    user-select: none;
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary {
+    background: var(--gradient-primary);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(88,166,255,0.2);
+}
+.btn-primary:hover:not(:disabled) {
+    box-shadow: 0 4px 16px rgba(88,166,255,0.35);
+    transform: translateY(-1px);
+}
+.btn-secondary {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--border-default);
+}
+.btn-secondary:hover:not(:disabled) { background: var(--bg-active); border-color: var(--text-tertiary); }
+.btn-success {
+    background: rgba(63,185,80,0.12);
+    color: var(--color-success);
+    border-color: rgba(63,185,80,0.3);
+}
+.btn-success:hover:not(:disabled) { background: rgba(63,185,80,0.2); }
+.btn-danger {
+    background: rgba(248,81,73,0.12);
+    color: var(--color-danger);
+    border-color: rgba(248,81,73,0.3);
+}
+.btn-danger:hover:not(:disabled) { background: rgba(248,81,73,0.2); }
+.btn-warning {
+    background: rgba(210,153,34,0.12);
+    color: var(--color-warning);
+    border-color: rgba(210,153,34,0.3);
+}
+.btn-warning:hover:not(:disabled) { background: rgba(210,153,34,0.2); }
+.btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+}
+.btn-ghost:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-primary); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-lg { padding: 12px 24px; font-size: 14px; }
+.btn-block { width: 100%; }
+.btn-icon { padding: 8px; width: 34px; height: 34px; }
+
+.auth-footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+.auth-toggle {
+    color: var(--color-primary);
+    cursor: pointer;
+    font-weight: 600;
+}
+.auth-toggle:hover { text-decoration: underline; }
+
+/* ==========================================================================
+   Main App Layout
+   ========================================================================== */
+#app {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+#app.visible { opacity: 1; }
+
+/* ---- TopBar ---- */
+.topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: var(--topbar-height);
+    background: var(--bg-sidebar);
+    opacity: 0.95;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-muted);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    z-index: 50;
+    gap: 16px;
+}
+.topbar-brand {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 700; font-size: 16px;
+    min-width: 0;
+}
+.topbar-brand .brand-icon {
+    width: 30px; height: 30px;
+    border-radius: 7px;
+    background: var(--gradient-primary);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 15px;
+    box-shadow: 0 2px 8px rgba(88,166,255,0.25);
+}
+.topbar-brand .brand-name {
+    background: var(--gradient-accent);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.topbar-brand .brand-version {
+    font-size: 11px; font-weight: 500;
+    color: var(--text-tertiary);
+    padding: 2px 8px;
+    background: var(--bg-hover);
+    border-radius: var(--radius-full);
+    -webkit-text-fill-color: var(--text-tertiary);
+}
+.topbar-spacer { flex: 1; }
+.topbar-actions { display: flex; align-items: center; gap: 10px; }
+/* 余额显示 */
+.topbar-balance {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 12px;
+    background: rgba(63,185,80,0.1);
+    border: 1px solid rgba(63,185,80,0.3);
+    border-radius: var(--radius-full);
+    font-size: 12px; font-weight: 600;
+    color: var(--color-success);
+    white-space: nowrap;
+    cursor: default;
+}
+.theme-toggle {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 14px;
+    transition: all 0.2s;
+}
+.theme-toggle:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+.topbar-user {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 12px 5px 5px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border-muted);
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    transition: all var(--transition);
+}
+.topbar-user:hover { background: var(--bg-active); border-color: var(--border-default); }
+.user-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--gradient-accent);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 13px; font-weight: 700;
+}
+.user-info { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+.user-info .user-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.user-info .user-role { font-size: 10px; color: var(--text-secondary); text-transform: capitalize; }
+
+/* ---- Sidebar ---- */
+.sidebar {
+    position: fixed;
+    top: var(--topbar-height);
+    left: 0;
+    bottom: 0;
+    width: var(--sidebar-width);
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border-muted);
+    display: flex;
+    flex-direction: column;
+    z-index: 40;
+    transition: transform var(--transition-slow);
+    overflow-y: auto;
+}
+.sidebar-nav { flex: 1; padding: 12px 10px; }
+.sidebar-section { margin-bottom: 8px; }
+.sidebar-section-title {
+    padding: 12px 12px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+}
+.sidebar-divider {
+    height: 1px;
+    background: var(--border-muted);
+    margin: 8px 12px;
+}
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition);
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 2px;
+    position: relative;
+}
+.nav-item:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+.nav-item.active {
+    background: rgba(88,166,255,0.1);
+    color: var(--color-primary);
+}
+.nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 50%;
+    transform: translateY(-50%);
+    width: 3px; height: 20px;
+    background: var(--color-primary);
+    border-radius: 0 3px 3px 0;
+}
+.nav-item .nav-icon { width: 18px; text-align: center; font-size: 14px; flex-shrink: 0; }
+.nav-item .nav-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-item .nav-badge {
+    background: var(--bg-active);
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: var(--radius-full);
+    min-width: 18px;
+    text-align: center;
+}
+.sidebar-footer {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border-muted);
+    font-size: 11px;
+    color: var(--text-tertiary);
+    text-align: center;
+}
+.sidebar-footer .server-status {
+    display: inline-flex; align-items: center; gap: 5px;
+}
+.status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--color-success);
+    box-shadow: 0 0 6px rgba(63,185,80,0.5);
+    animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* ---- Content Area ---- */
+.content {
+    margin-left: var(--sidebar-width);
+    margin-top: var(--topbar-height);
+    width: calc(100vw - var(--sidebar-width));
+    height: calc(100vh - var(--topbar-height));
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+.view {
+    display: none;
+    padding: 24px;
+    padding-bottom: 120px;
+    animation: viewFadeIn 0.3s ease;
+}
+.view.active { display: block; }
+@keyframes viewFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- Page Header ---- */
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.page-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex; align-items: center; gap: 10px;
+    min-width: 0;
+}
+.page-title i { color: var(--color-primary); }
+.page-subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+.page-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* ---- Card ---- */
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-muted);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: all var(--transition);
+}
+.card-hover:hover {
+    border-color: var(--border-default);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+.card-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border-muted);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+.card-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.card-title i { color: var(--color-primary); font-size: 13px; }
+.card-body { padding: 18px; }
+
+/* ---- Glass Card ---- */
+.glass-card {
+    background: rgba(22,27,34,0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(48,54,61,0.5);
+    border-radius: var(--radius-lg);
+    transition: all var(--transition);
+}
+.glass-card:hover {
+    border-color: var(--border-default);
+    background: rgba(28,33,41,0.7);
+}
+
+/* ==========================================================================
+   Dashboard
+   ========================================================================== */
+.welcome-banner {
+    background:
+        linear-gradient(135deg, rgba(88,166,255,0.08) 0%, rgba(63,185,80,0.05) 100%),
+        var(--bg-card);
+    border: 1px solid var(--border-muted);
+    border-radius: var(--radius-lg);
+    padding: 28px;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+}
+.welcome-banner::before {
+    content: '';
+    position: absolute;
+    top: -50%; right: -10%;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(88,166,255,0.06) 0%, transparent 70%);
+    border-radius: 50%;
+}
+.welcome-banner h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; position: relative; }
+.welcome-banner p { color: var(--text-secondary); font-size: 14px; position: relative; }
+.welcome-banner .welcome-time { margin-top: 12px; font-size: 12px; color: var(--text-tertiary); position: relative; }
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-muted);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+.stat-card:hover {
+    border-color: var(--border-default);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+.stat-icon {
+    width: 48px; height: 48px;
+    border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+.stat-icon.blue { background: rgba(88,166,255,0.12); color: var(--color-primary); }
+.stat-icon.green { background: rgba(63,185,80,0.12); color: var(--color-success); }
+.stat-icon.yellow { background: rgba(210,153,34,0.12); color: var(--color-warning); }
+.stat-icon.purple { background: rgba(163,113,247,0.12); color: #a371f7; }
+.stat-info { flex: 1; min-width: 0; }
+.stat-value { font-size: 26px; font-weight: 700; line-height: 1.1; color: var(--text-primary); }
+.stat-label { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+/* ---- Activity Feed ---- */
+.activity-list { display: flex; flex-direction: column; }
+.activity-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-muted);
+}
+.activity-item:last-child { border-bottom: none; }
+.activity-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-top: 6px;
+    flex-shrink: 0;
+}
+.activity-dot.success { background: var(--color-success); }
+.activity-dot.warn { background: var(--color-warning); }
+.activity-dot.error { background: var(--color-danger); }
+.activity-dot.info { background: var(--color-primary); }
+.activity-content { flex: 1; min-width: 0; }
+.activity-text { font-size: 13px; color: var(--text-primary); word-break: break-word; }
+.activity-time { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+
+/* ---- Activity Collapse (最近活动 折叠) ---- */
+.activity-collapse {
+    max-height: 1200px;
+    overflow: hidden;
+    opacity: 1;
+    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                padding-top 0.35s ease,
+                padding-bottom 0.35s ease,
+                opacity 0.3s ease;
+}
+.activity-collapse.collapsed {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    opacity: 0;
+}
+
+/* ==========================================================================
+   Panels List
+   ========================================================================== */
+.panels-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+}
+.panel-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-muted);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    cursor: pointer;
+    transition: all var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+.panel-card:hover {
+    border-color: var(--color-primary);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3), var(--shadow-glow);
+}
+.panel-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--gradient-primary);
+    opacity: 0;
+    transition: opacity var(--transition);
+}
+.panel-card:hover::after { opacity: 1; }
+.panel-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.panel-card-name { font-size: 16px; font-weight: 700; color: var(--text-primary); word-break: break-word; }
+.panel-card-id {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-top: 4px;
+}
+.panel-card-meta { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+.panel-meta-row { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); }
+.panel-meta-row i { width: 14px; text-align: center; color: var(--text-tertiary); }
+.panel-card-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 14px; padding-top: 14px;
+    border-top: 1px solid var(--border-muted);
+    gap: 8px;
+}
+
+/* ---- Status Badges ---- */
+.badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+.badge::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+}
+.badge-active { background: rgba(63,185,80,0.12); color: var(--color-success); }
+.badge-expired { background: rgba(248,81,73,0.12); color: var(--color-danger); }
+.badge-stopped { background: rgba(125,133,144,0.12); color: var(--text-secondary); }
+.badge-running { background: rgba(63,185,80,0.12); color: var(--color-success); }
+.badge-error { background: rgba(248,81,73,0.12); color: var(--color-danger); }
+.badge-unused { background: rgba(88,166,255,0.12); color: var(--color-primary); }
+.badge-used { background: rgba(125,133,144,0.12); color: var(--text-secondary); }
+.badge-revoked { background: rgba(248,81,73,0.12); color: var(--color-danger); }
+.badge-suspended { background: rgba(210,153,34,0.12); color: var(--color-warning); }
+.badge-role-user { background: rgba(125,133,144,0.12); color: var(--text-secondary); }
+.badge-role-admin { background: rgba(88,166,255,0.12); color: var(--color-primary); }
+.badge-role-superadmin { background: rgba(163,113,247,0.12); color: #a371f7; }
+
+/* ==========================================================================
+   Panel Detail - SW-Style Console
+   ========================================================================== */
+.panel-detail-header {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+.panel-detail-title { flex: 1; min-width: 200px; }
+.panel-detail-title h2 { font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+.panel-detail-title .panel-id-text { font-family: var(--font-mono); font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
+.panel-detail-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ---- Console Box ---- */
+.console-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - var(--topbar-height) - 220px);
+    min-height: 400px;
+}
+.console-tabs {
+    display: flex;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border-default);
+    padding: 0 8px;
+    flex-shrink: 0;
+    overflow-x: auto;
+}
+.console-tab {
+    padding: 12px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition);
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    display: flex; align-items: center; gap: 7px;
+}
+.console-tab:hover { color: var(--text-primary); background: var(--bg-hover); }
+.console-tab.active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+    background: var(--bg-card);
+}
+.console-tab i { font-size: 12px; }
+.console-body { flex: 1; overflow: hidden; position: relative; min-height: 0; }
+.console-panel { display: none; height: 100%; flex-direction: column; }
+.console-panel.active { display: flex; }
+
+/* ---- Terminal ---- */
+.terminal-output {
+    flex: 1;
+    background: var(--bg-input);
+    padding: 14px;
+    overflow-y: auto;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-primary);
+}
+.terminal-line { padding: 1px 0; word-break: break-word; white-space: pre-wrap; }
+.terminal-line .ts { color: var(--text-tertiary); margin-right: 8px; }
+.terminal-line .lvl-info { color: var(--text-primary); }
+.terminal-line .lvl-success { color: var(--color-success); }
+.terminal-line .lvl-warn { color: var(--color-warning); }
+.terminal-line .lvl-error { color: var(--color-danger); }
+.terminal-line.system { color: var(--color-primary); }
+.terminal-input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--border-default);
+    flex-shrink: 0;
+}
+.terminal-prompt {
+    color: var(--color-success);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 700;
+}
+.terminal-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-primary);
+}
+.terminal-input::placeholder { color: var(--text-tertiary); }
+.terminal-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border-default);
+    flex-shrink: 0;
+}
+.terminal-toolbar .toolbar-info {
+    flex: 1;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    font-family: var(--font-mono);
+}
+.quick-cmd-item:hover { background: var(--bg-hover); }
+
+/* ---- Log Viewer ---- */
+.log-viewer {
+    /* flex-basis 使用 auto, 避免 0% 基准导致容器宽度塌缩为 0 (文字被迫竖排) */
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 12px;
+    background: var(--bg-input);
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    writing-mode: horizontal-tb;
+}
+/* 系统日志查看器: 强制水平排版, 保证文字横向显示 */
+#systemLogViewer {
+    width: 100%;
+    min-height: 360px;
+    writing-mode: horizontal-tb;
+    text-orientation: mixed;
+}
+#systemLogViewer > div {
+    flex-wrap: wrap;
+}
+.log-entry {
+    display: flex;
+    gap: 10px;
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(48,54,61,0.3);
+}
+.log-entry .log-time { color: var(--text-tertiary); flex-shrink: 0; }
+.log-entry .log-level {
+    flex-shrink: 0;
+    width: 56px;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 11px;
+}
+.log-entry .log-msg { flex: 1; word-break: break-word; }
+.log-entry.level-success .log-level { color: var(--color-success); }
+.log-entry.level-error .log-level { color: var(--color-danger); }
+.log-entry.level-warn .log-level { color: var(--color-warning); }
+.log-entry.level-info .log-level { color: var(--text-secondary); }
+
+/* ---- Files Tab ---- */
+.file-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+    align-content: start;
+}
+.file-item {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-muted);
+    border-radius: var(--radius-md);
+    padding: 14px 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all var(--transition);
+}
+.file-item:hover { background: var(--bg-hover); border-color: var(--border-default); }
+.file-item i { font-size: 24px; color: var(--color-primary); margin-bottom: 8px; display: block; }
+.file-item .file-name { font-size: 12px; color: var(--text-secondary); word-break: break-all; }
+
+/* ---- Plugins Tab ---- */
+.plugin-list { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.plugin-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-muted);
+    border-radius: var(--radius-md);
+    transition: all var(--transition);
+}
+.plugin-item:hover { border-color: var(--border-default); }
+.plugin-icon { width: 36px; height: 36px; border-radius: var(--radius-sm); background: rgba(88,166,255,0.1); color: var(--color-primary); display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+.plugin-info { flex: 1; min-width: 0; }
+.plugin-name { font-size: 13px; font-weight: 600; }
+.plugin-desc { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+
+/* ---- Settings Tab ---- */
+.settings-form { flex: 1; overflow-y: auto; padding: 20px; min-height: 0; }
+.settings-form .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.settings-form .form-grid .full { grid-column: 1 / -1; }
+
+/* ==========================================================================
+   Bots List
+   ========================================================================== */
+.bots-list { display: flex; flex-direction: column; gap: 10px; }
+.bot-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-muted);
+    border-radius: var(--radius-lg);
+    transition: all var(--transition);
+}
+.bot-item:hover { border-color: var(--border-default); box-shadow: var(--shadow-sm); }
+.bot-icon {
+    width: 40px; height: 40px;
+    border-radius: var(--radius-md);
+    background: var(--gradient-accent);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 17px;
+    flex-shrink: 0;
+}
+.bot-info { flex: 1; min-width: 0; }
+.bot-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.bot-meta { font-size: 12px; color: var(--text-secondary); margin-top: 3px; display: flex; gap: 12px; flex-wrap: wrap; }
+.bot-meta span { display: inline-flex; align-items: center; gap: 4px; }
+.bot-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+/* ==========================================================================
+   Admin - Tables
+   ========================================================================== */
+.table-wrap {
+    background: var(--bg-card);
+    border: 1px solid var(--border-muted);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    overflow-x: auto;
+}
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.table thead { background: var(--bg-elevated); }
+.table th {
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-bottom: 1px solid var(--border-default);
+    white-space: nowrap;
+}
+.table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-muted);
+    color: var(--text-primary);
+    vertical-align: middle;
+}
+.table tbody tr { transition: background var(--transition); }
+.table tbody tr:hover { background: var(--bg-hover); }
+.table tbody tr:last-child td { border-bottom: none; }
+.table .mono-cell { font-family: var(--font-mono); font-size: 12px; }
+.table .actions-cell { display: flex; gap: 6px; }
+
+/* ---- Filter Bar ---- */
+.filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+.filter-select {
+    background: var(--bg-input);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    padding: 7px 12px;
+    font-size: 13px;
+    color: var(--text-primary);
+    cursor: pointer;
+    outline: none;
+    transition: border-color var(--transition);
+}
+.filter-select:focus { border-color: var(--color-primary); }
+.filter-select option { background: var(--bg-card); }
+.filter-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+.filter-checkbox input { cursor: pointer; width: 15px; height: 15px; accent-color: var(--color-primary); }
+.filter-checkbox:hover { color: var(--text-primary); }
+
+/* ==========================================================================
+   Empty States
+   ========================================================================== */
+.empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--text-secondary);
+}
+.empty-state i { font-size: 48px; color: var(--text-tertiary); margin-bottom: 16px; }
+.empty-state h3 { font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+.empty-state p { font-size: 13px; }
+
+/* ---- Loading Spinner ---- */
+.spinner {
+    width: 20px; height: 20px;
+    border: 2px solid var(--border-default);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block;
+}
+.spinner-sm { width: 14px; height: 14px; border-width: 2px; }
+.spinner-lg { width: 32px; height: 32px; border-width: 3px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-overlay {
+    display: flex; align-items: center; justify-content: center;
+    padding: 40px;
+    color: var(--text-secondary);
+    gap: 10px;
+    font-size: 13px;
+}
+
+/* ==========================================================================
+   Modals
+   ========================================================================== */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(1,4,9,0.7);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity var(--transition), visibility var(--transition);
+    padding: 20px;
+}
+.modal-overlay.visible { opacity: 1; visibility: visible; }
+.modal {
+    background: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    width: 100%;
+    max-width: 480px;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transform: scale(0.95) translateY(10px);
+    transition: transform var(--transition-slow);
+    box-shadow: var(--shadow-lg);
+}
+.modal-overlay.visible .modal { transform: scale(1) translateY(0); }
+.modal.modal-lg { max-width: 640px; }
+.modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-muted);
+}
+.modal-title { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.modal-title i { color: var(--color-primary); }
+.modal-close {
+    width: 32px; height: 32px;
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-secondary);
+    transition: all var(--transition);
+    cursor: pointer;
+}
+.modal-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+.modal-body { padding: 20px; overflow-y: auto; }
+.modal-footer {
+    display: flex; justify-content: flex-end; gap: 10px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border-muted);
+}
+
+/* MPay 登录步骤指示器 */
+.mpay-step {
+    flex: 1;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    padding: 6px 4px;
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-muted);
+    transition: all var(--transition);
+}
+.mpay-step.active {
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+    background: rgba(88,166,255,0.08);
+}
+.mpay-step.done {
+    color: var(--color-success);
+    border-color: var(--color-success);
+    background: rgba(63,185,80,0.08);
+}
+
+/* ==========================================================================
+   Toast Notifications
+   ========================================================================== */
+#toastContainer {
+    position: fixed;
+    top: 70px;
+    right: 20px;
+    z-index: 300;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+    max-width: 380px;
+}
+.toast {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-left: 3px solid var(--color-primary);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    box-shadow: var(--shadow-lg);
+    animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: auto;
+    min-width: 280px;
+}
+.toast.removing { animation: toastSlideOut 0.3s ease forwards; }
+@keyframes toastSlideIn {
+    from { transform: translateX(120%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes toastSlideOut {
+    to { transform: translateX(120%); opacity: 0; }
+}
+.toast-success { border-left-color: var(--color-success); }
+.toast-error { border-left-color: var(--color-danger); }
+.toast-warn { border-left-color: var(--color-warning); }
+.toast-info { border-left-color: var(--color-primary); }
+.toast-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.toast-success .toast-icon { color: var(--color-success); }
+.toast-error .toast-icon { color: var(--color-danger); }
+.toast-warn .toast-icon { color: var(--color-warning); }
+.toast-info .toast-icon { color: var(--color-primary); }
+.toast-content { flex: 1; min-width: 0; }
+.toast-title { font-size: 13px; font-weight: 600; }
+.toast-message { font-size: 12px; color: var(--text-secondary); margin-top: 2px; word-break: break-word; }
+.toast-close { color: var(--text-tertiary); cursor: pointer; padding: 2px; font-size: 13px; flex-shrink: 0; }
+.toast-close:hover { color: var(--text-primary); }
+
+/* ---- Card Key Display ---- */
+.card-key-display {
+    background: var(--bg-input);
+    border: 1px dashed var(--border-default);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--color-success);
+    word-break: break-all;
+    cursor: pointer;
+    transition: all var(--transition);
+    display: flex; align-items: center; gap: 8px;
+}
+.card-key-display:hover { border-color: var(--color-primary); background: var(--bg-hover); }
+.card-key-display .copy-hint { font-size: 11px; color: var(--text-tertiary); margin-left: auto; }
+
+/* ---- Stats Summary ---- */
+.stats-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+.summary-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border-muted);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    text-align: center;
+}
+.summary-value { font-size: 22px; font-weight: 700; }
+.summary-label { font-size: 11px; color: var(--text-secondary); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.3px; }
+
+/* ---- User Menu Dropdown ---- */
+.user-menu {
+    position: absolute;
+    top: calc(var(--topbar-height) - 4px);
+    right: 20px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    min-width: 200px;
+    z-index: 60;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: all var(--transition);
+    overflow: hidden;
+}
+.user-menu.visible { opacity: 1; visibility: visible; transform: translateY(0); }
+.user-menu-header { padding: 14px 16px; border-bottom: 1px solid var(--border-muted); }
+.user-menu-header .um-name { font-weight: 600; font-size: 14px; }
+.user-menu-header .um-id { font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono); margin-top: 2px; }
+.user-menu-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px;
+    font-size: 13px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background var(--transition);
+}
+.user-menu-item:hover { background: var(--bg-hover); }
+.user-menu-item i { width: 16px; text-align: center; color: var(--text-secondary); }
+.user-menu-item.danger { color: var(--color-danger); }
+.user-menu-item.danger i { color: var(--color-danger); }
+
+/* ---- Mobile Menu Toggle ---- */
+.menu-toggle {
+    display: none;
+    width: 36px; height: 36px;
+    border-radius: var(--radius-sm);
+    align-items: center; justify-content: center;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition);
+}
+.menu-toggle:hover { background: var(--bg-hover); color: var(--text-primary); }
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 35;
+}
+.sidebar-backdrop.visible { display: block; }
+
+/* ==========================================================================
+   Runner (运行器)
+   ========================================================================== */
+.runner-files-list {
+    max-height: 320px;
+    overflow-y: auto;
+    border: 1px solid var(--border-muted);
+    border-radius: var(--radius-md);
+}
+.runner-empty { color: var(--text-tertiary); font-size: 13px; text-align: center; padding: 20px 12px; }
+.runner-upload-btn { min-height: 48px; font-size: 14px; }
+.runner-cwd-timeout { display: flex; gap: 12px; }
+.runner-cwd-group { flex: 1; }
+.runner-timeout-group { width: 120px; flex-shrink: 0; }
+.runner-action-row { display: flex; gap: 10px; }
+.runner-action-btn { flex: 1; min-height: 48px; font-size: 14px; }
+.runner-status { font-size: 12px; color: var(--text-tertiary); }
+.runner-output {
+    margin: 0; padding: 16px;
+    min-height: 600px; max-height: 80vh; overflow-y: auto;
+    background: #0d1117; color: #e6edf3;
+    font-family: 'Consolas','Monaco',monospace;
+    font-size: 13px; line-height: 1.6;
+    white-space: pre-wrap; word-break: break-all;
+    border-radius: 0;
+}
+/* Termux 风格交互输入行 */
+.runner-input-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px;
+    background: #0d1117;
+    border-top: 1px solid #21262d;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+.runner-input-prompt { color: #3fb950; font-size: 14px; flex-shrink: 0; }
+.runner-input {
+    flex: 1; min-width: 0;
+    background: transparent; border: none; outline: none;
+    color: #e6edf3; font-family: 'Consolas','Monaco',monospace;
+    font-size: 13px; padding: 4px 0;
+}
+.runner-input::placeholder { color: #484f58; }
+.runner-input:disabled { color: #484f58; cursor: not-allowed; }
+/* 文件列表条目 */
+.runner-file-item { padding: 10px 12px; border-bottom: 1px solid var(--border-muted); }
+.runner-file-item:last-child { border-bottom: none; }
+.runner-file-info { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.runner-file-icon { color: var(--color-primary); }
+.runner-file-name {
+    flex: 1; cursor: pointer; font-size: 13px; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.runner-file-name:hover { color: var(--color-primary); }
+.runner-file-size { color: var(--text-tertiary); font-size: 11px; white-space: nowrap; }
+.runner-file-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.runner-file-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    min-height: 34px; padding: 0 10px; font-size: 12px; font-weight: 600;
+    border-radius: var(--radius-sm); border: 1px solid transparent;
+    background: var(--bg-hover); color: var(--text-secondary); cursor: pointer;
+    transition: all var(--transition);
+}
+.runner-file-btn.run { background: rgba(88,166,255,0.12); color: var(--color-primary); border-color: rgba(88,166,255,0.3); }
+.runner-file-btn.run:hover { background: rgba(88,166,255,0.2); }
+.runner-file-btn.dl { color: var(--color-primary); }
+.runner-file-btn.view { color: #a371f7; }
+.runner-file-btn.rn { color: var(--color-warning); }
+.runner-file-btn.zip { color: var(--color-success); }
+.runner-file-btn.del { color: var(--color-danger); }
+.runner-file-btn:hover { background: var(--bg-active); }
+
+/* ==========================================================================
+   Tutorial (教程)
+   ========================================================================== */
+.tutorial-card { margin-bottom: 14px; }
+.tutorial-card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; cursor: pointer; user-select: none;
+    transition: background var(--transition);
+}
+.tutorial-card-header:hover { background: var(--bg-hover); }
+.tutorial-chevron { color: var(--text-tertiary); transition: transform var(--transition); font-size: 13px; }
+.tutorial-card.open .tutorial-chevron { transform: rotate(180deg); }
+.tutorial-card-body {
+    max-height: 0; overflow: hidden; padding: 0 20px;
+    transition: max-height var(--transition-slow), padding var(--transition-slow);
+}
+.tutorial-card.open .tutorial-card-body { max-height: 2400px; padding: 0 20px 20px; }
+.tutorial-item { padding: 10px 0; border-top: 1px solid var(--border-muted); }
+.tutorial-item:first-child { border-top: none; }
+.tutorial-item-title {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;
+}
+.tutorial-dot { font-size: 6px; color: var(--color-primary); }
+.tutorial-text { font-size: 13px; color: var(--text-secondary); line-height: 1.7; margin: 0; }
+.tutorial-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.tutorial-tag {
+    font-size: 12px; padding: 4px 10px; border-radius: var(--radius-full);
+    background: var(--bg-hover); color: var(--text-secondary);
+    border: 1px solid var(--border-muted);
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+@media (max-width: 900px) {
+    .dashboard-grid { grid-template-columns: 1fr; }
+    .settings-form .form-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+    :root { --sidebar-width: 260px; }
+    .menu-toggle { display: flex; }
+    .sidebar {
+        transform: translateX(-100%);
+        box-shadow: var(--shadow-lg);
+    }
+    .sidebar.open { transform: translateX(0); }
+    .content {
+        margin-left: 0;
+        width: 100vw;
+    }
+    .topbar-brand .brand-name { display: none; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .panels-grid { grid-template-columns: 1fr; }
+    .console-box { height: calc(100vh - var(--topbar-height) - 240px); }
+    .view { padding: 16px; padding-bottom: 120px; }
+    .topbar-user .user-info { display: none; }
+    .modal { max-width: 100%; }
+}
+@media (max-width: 480px) {
+    .stats-grid { grid-template-columns: 1fr; }
+    .form-row { flex-direction: column; }
+    .captcha-wrap { flex-direction: column; align-items: stretch; }
+    .captcha-img-box { width: 100%; min-height: 56px; height: 56px; }
+    .auth-card { padding: 24px 20px; }
+    .boot-logo { font-size: 9px; }
+    .panel-detail-actions { width: 100%; }
+    .panel-detail-actions .btn { flex: 1; }
+    .runner-cwd-timeout { flex-direction: column; }
+    .runner-timeout-group { width: 100%; }
+}
+/* ---- Announcements ---- */
+.ann-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-muted);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    transition: all var(--transition);
+}
+.ann-card:hover { border-color: var(--border-default); box-shadow: var(--shadow-sm); }
+.ann-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+.ann-title { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+.ann-meta { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
+.ann-content { font-size: 14px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 16px; white-space: pre-wrap; word-break: break-word; }
+.ann-actions { display: flex; align-items: center; gap: 16px; padding-top: 12px; border-top: 1px solid var(--border-muted); }
+.ann-reaction { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; color: var(--text-secondary); transition: all 0.2s; user-select: none; padding: 4px 8px; border-radius: var(--radius-sm); }
+.ann-reaction:hover { background: var(--bg-hover); }
+.ann-reaction.active-like { color: var(--color-success); font-weight: 600; }
+.ann-reaction.active-dislike { color: var(--color-danger); font-weight: 600; }
+.ann-reaction i { font-size: 16px; }
+.ann-delete-btn { margin-left: auto; cursor: pointer; color: var(--text-tertiary); font-size: 13px; transition: color 0.2s; }
+.ann-delete-btn:hover { color: var(--color-danger); }
+.ann-comments { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-muted); }
+.ann-comments-toggle { font-size: 13px; color: var(--color-primary); cursor: pointer; user-select: none; }
+.ann-comments-toggle:hover { text-decoration: underline; }
+.ann-comment { padding: 8px 12px; background: var(--bg-input); border-radius: var(--radius-sm); margin-top: 8px; font-size: 13px; }
+.ann-comment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.ann-comment-user { font-weight: 600; font-size: 12px; color: var(--color-primary); }
+.ann-comment-time { font-size: 11px; color: var(--text-tertiary); }
+.ann-comment-content { color: var(--text-secondary); }
+.ann-comment-delete { cursor: pointer; color: var(--text-tertiary); font-size: 11px; margin-left: 8px; }
+.ann-comment-delete:hover { color: var(--color-danger); }
+.ann-comment-input { display: flex; gap: 8px; margin-top: 8px; }
+.ann-comment-input input { flex: 1; }
+.ann-log-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--border-muted); font-size: 13px; }
+.ann-log-item:last-child { border-bottom: none; }
+.ann-log-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+.ann-log-icon.like { background: rgba(34,197,94,0.15); color: var(--color-success); }
+.ann-log-icon.dislike { background: rgba(239,68,68,0.15); color: var(--color-danger); }
+.ann-log-icon.comment { background: rgba(59,130,246,0.15); color: var(--color-primary); }
+.ann-log-icon.create { background: rgba(168,85,247,0.15); color: #a855f7; }
+
+/* ---- Scope Tabs (面板 我的/全部 切换) ---- */
+.scope-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-muted);
+    border-radius: var(--radius-md);
+    padding: 4px;
+    width: fit-content;
+}
+.scope-tab {
+    padding: 7px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    white-space: nowrap;
+}
+.scope-tab:hover { color: var(--text-primary); background: var(--bg-hover); }
+.scope-tab.active {
+    color: var(--color-primary);
+    background: var(--bg-card);
+    border-color: var(--color-primary);
+}
+
+/* ---- Announcement Pin ---- */
+.ann-pin-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--color-warning);
+    background: rgba(210,153,34,0.14);
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    margin-right: 8px;
+    vertical-align: middle;
+}
+.ann-pin-btn {
+    cursor: pointer;
+    color: var(--text-tertiary);
+    font-size: 13px;
+    transition: color 0.2s;
+    user-select: none;
+    white-space: nowrap;
+}
+.ann-pin-btn:hover { color: var(--color-warning); }
+.ann-pin-btn.active { color: var(--color-warning); font-weight: 600; }
+.ann-card.pinned { border-color: rgba(210,153,34,0.5); box-shadow: 0 0 0 1px rgba(210,153,34,0.25); }
+
+/* ---- 建筑工具 (Builder) ---- */
+.builder-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.builder-tab { padding: 8px 16px; border: 1px solid var(--border-default); background: var(--bg-card); border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--text-secondary); transition: all 0.2s; }
+.builder-tab:hover { background: var(--bg-hover); color: var(--text-primary); }
+.builder-tab.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+.builder-panel { display: none; }
+.builder-panel.active { display: block; }
+.builder-hint { color: var(--text-tertiary); font-size: 12px; margin: 4px 0 12px; }
+.builder-options { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
+.builder-options label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); }
+.builder-options select, .builder-options input[type="number"] { background: var(--bg-input); border: 1px solid var(--border-default); color: var(--text-primary); border-radius: var(--radius-sm); padding: 4px 8px; font-size: 13px; }
+.builder-result { margin-top: 16px; }
+.builder-result p { font-size: 13px; color: var(--text-secondary); margin: 4px 0; }
+.builder-item-form { display: grid; gap: 12px; }
+.builder-item-form label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+.builder-item-form input[type="text"] { flex: 1; background: var(--bg-input); border: 1px solid var(--border-default); color: var(--text-primary); border-radius: var(--radius-sm); padding: 6px 10px; font-size: 13px; }
+.builder-item-form input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+.builder-panel input[type="file"] { width: 100%; margin: 8px 0 12px; font-size: 13px; }
+.builder-panel select { background: var(--bg-input); border: 1px solid var(--border-default); color: var(--text-primary); border-radius: var(--radius-sm); padding: 6px 10px; font-size: 13px; }
+.builder-panel input[type="number"], .builder-panel input[type="text"] { background: var(--bg-input); border: 1px solid var(--border-default); color: var(--text-primary); border-radius: var(--radius-sm); padding: 6px 10px; font-size: 13px; }
+.builder-panel input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+.builder-panel table { border-collapse: collapse; }
+.builder-panel th, .builder-panel td { border: 1px solid var(--border-muted); padding: 4px 8px; text-align: left; }
+.builder-panel th { color: var(--text-secondary); font-weight: 600; }
+.btn-info { background: rgba(88,166,255,0.15); border: 1px solid var(--color-primary); color: var(--color-primary); }
+.btn-info:hover:not(:disabled) { background: rgba(88,166,255,0.25); }
+    </style>
+    <!-- Creative Effects (原创特效, 与方寸云端不同) -->
+    <link rel="stylesheet" href="/css/creative-effects.css">
+</head>
+<body>
+
+<!-- ==========================================================================
+     Boot Screen
+     ========================================================================== -->
+<div class="screen" id="bootScreen">
+    <pre class="boot-logo"><span class="boot-gradient-1"><span class="boot-char">   ___      _            _  ___      _   </span></span>
+<span class="boot-gradient-1"><span class="boot-char">  / __|_ __| |__  _ _ __| |/ __|__ _| |_ ___</span></span>
+<span class="boot-gradient-2"><span class="boot-char"> | (__| '__| '_ \| '_/ _| | (_ / _` |  _/ -_)</span></span>
+<span class="boot-gradient-1"><span class="boot-char">  \___|_|  |_.__/|_| \__|_|\___\__,_|\__\___|</span></span></pre>
+    <div class="boot-version">Version <span id="bootVersion">v1.6.0</span></div>
+    <script>
+    // 兜底: 2.5秒后强制切换 (即使v2app.js加载失败也保证能看到登录页)
+    (function() {
+        setTimeout(function() {
+            try {
+                var boot = document.getElementById("bootScreen");
+                var auth = document.getElementById("authScreen");
+                if (boot) boot.classList.add("fade-out");
+                if (auth) {
+                    auth.classList.remove("hidden");
+                    auth.classList.remove("fade-out");
+                }
+            } catch(e) {}
+        }, 2500);
+    })();
+    </script>
+    <div class="boot-loader" id="bootLoader">
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+    </div>
+    <div class="boot-info">
+        CrystalGate CrystalGate &copy; 2025copy; 2026 &middot; Minecraft Bedrock 机器人管理平台
+    </div>
+</div>
+
+<!-- ==========================================================================
+     Auth Screen
+     ========================================================================== -->
+<div class="screen hidden" id="authScreen">
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <i class="fas fa-terminal"></i>
+                </div>
+                <div class="auth-title">CrystalGate</div>
+                <div class="auth-subtitle">Minecraft Bedrock 机器人管理平台</div>
+            </div>
+
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="tabLogin" data-auth-tab="login">登录</button>
+                <button class="auth-tab" id="tabRegister" data-auth-tab="register">注册</button>
+            </div>
+
+            <!-- Login Form -->
+            <form class="auth-form" id="loginForm" autocomplete="on">
+                <div class="form-group">
+                    <label class="form-label" for="loginUsername">
+                        <i class="fas fa-user"></i> 用户名
+                    </label>
+                    <input type="text" class="form-input" id="loginUsername" name="username"
+                           placeholder="输入用户名" autocomplete="username" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="loginPassword">
+                        <i class="fas fa-lock"></i> 密码
+                    </label>
+                    <input type="password" class="form-input" id="loginPassword" name="password"
+                           placeholder="输入密码" autocomplete="off" data-lpignore="true" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block btn-lg" id="loginBtn">
+                    <i class="fas fa-sign-in-alt"></i> 登录
+                </button>
+            </form>
+
+            <!-- Register Form -->
+            <form class="auth-form hidden" id="registerForm" autocomplete="on">
+                <div class="form-group">
+                    <label class="form-label" for="regUsername">
+                        <i class="fas fa-user"></i> 用户名
+                    </label>
+                    <input type="text" class="form-input" id="regUsername" name="username"
+                           placeholder="3-20 位字符" autocomplete="username" required minlength="3" maxlength="20">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="regPassword">
+                        <i class="fas fa-lock"></i> 密码
+                    </label>
+                    <input type="password" class="form-input" id="regPassword" name="password"
+                           placeholder="至少 6 位" autocomplete="new-password" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="regCardKey">
+                        <i class="fas fa-key"></i> 注册卡密
+                    </label>
+                    <input type="text" class="form-input mono" id="regCardKey" name="card_key"
+                           placeholder="输入注册卡密" autocomplete="off" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-shield-halved"></i> 图形验证码
+                    </label>
+                    <div style="display:flex;gap:10px;align-items:center;">
+                        <input type="text" class="form-input mono" id="regCaptchaInput"
+                               placeholder="输入图中验证码" autocomplete="off" maxlength="6"
+                               style="text-transform:uppercase;letter-spacing:2px;" required>
+                    </div>
+                    <img id="regCaptchaImg" alt="验证码" title="点击图片刷新验证码"
+                         style="width:100%;height:52px;object-fit:cover;border:1px solid #30363d;border-radius:8px;margin-top:8px;cursor:pointer;background:#0d1117;"
+                         onerror="this.style.display='none';" onclick="loadRegCaptcha()">
+                    <div id="regCaptchaFallback" class="hidden"
+                         style="margin-top:8px;padding:8px 12px;background:#0d1117;border:1px dashed #30363d;border-radius:8px;font-family:var(--font-mono);font-size:20px;letter-spacing:8px;text-align:center;color:#58a6ff;cursor:pointer;"
+                         onclick="loadRegCaptcha()"></div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block btn-lg" id="registerBtn">
+                    <i class="fas fa-user-plus"></i> 注册
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                <span id="authFooterText">还没有账号？</span>
+                <span class="auth-toggle" id="authToggle">立即注册</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==========================================================================
+     Main App
+     ========================================================================== -->
+<div id="app">
+
+    <!-- 面板锁定遮罩 (TD风格: 面板关闭后锁定整个界面) -->
+    <div class="panel-lock-overlay hidden" id="panelLockOverlay">
+        <div class="panel-lock-icon">
+            <i class="fas fa-lock"></i>
+        </div>
+        <div class="panel-lock-title">面板已锁定</div>
+        <div class="panel-lock-msg" id="panelLockMsg">
+            您的面板已关闭或已过期，无法继续操作。<br>
+            请联系管理员或续费后重新激活面板。
+        </div>
+        <button class="panel-lock-btn" id="panelLockBtn" onclick="location.reload()">
+            <i class="fas fa-redo"></i> 重新加载
+        </button>
+    </div>
+
+    <!-- TopBar -->
+    <header class="topbar">
+        <button class="menu-toggle" id="menuToggle" aria-label="菜单">
+            <i class="fas fa-bars"></i>
+        </button>
+        <div class="topbar-brand">
+            <div class="brand-icon"><i class="fas fa-terminal"></i></div>
+            <span class="brand-name">CrystalGate</span>
+            <span class="brand-version" id="topbarVersion">v1.6.0</span>
+        </div>
+        <div class="topbar-spacer"></div>
+        <div class="topbar-actions">
+            <button class="theme-toggle" id="themeToggle" aria-label="切换主题" title="切换主题">
+                <i class="fas fa-moon"></i>
+            </button>
+            <div class="topbar-user" id="topbarUser" role="button" tabindex="0">
+                <div class="user-avatar" id="userAvatar">U</div>
+                <div class="user-info">
+                    <span class="user-name" id="currentUserName">用户</span>
+                    <span class="user-role" id="currentUserRole">user</span>
+                </div>
+                <i class="fas fa-chevron-down" style="font-size:10px;color:var(--text-tertiary);"></i>
+            </div>
+        </div>
+    </header>
+
+    <!-- User Menu Dropdown -->
+    <div class="user-menu" id="userMenu">
+        <div class="user-menu-header">
+            <div class="um-name" id="umName">用户名</div>
+            <div class="um-id" id="umId">ID: -</div>
+        </div>
+        <div class="user-menu-item" data-action="profile">
+            <i class="fas fa-id-card"></i> 个人信息
+        </div>
+        <div class="user-menu-item" data-action="change-password">
+            <i class="fas fa-key"></i> 修改密码
+        </div>
+        <div class="user-menu-item" data-action="dashboard">
+            <i class="fas fa-tachometer-alt"></i> 返回仪表盘
+        </div>
+        <div class="user-menu-item danger" data-action="logout" id="logoutBtn">
+            <i class="fas fa-sign-out-alt"></i> 退出登录
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <nav class="sidebar-nav">
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">主菜单</div>
+                <div class="nav-item active" data-view="dashboard">
+                    <i class="fas fa-tachometer-alt nav-icon"></i>
+                    <span class="nav-label">仪表盘</span>
+                </div>
+                <div class="nav-item" data-view="panels">
+                    <i class="fas fa-th-large nav-icon"></i>
+                    <span class="nav-label">面板管理</span>
+                    <span class="nav-badge" id="badgePanels">0</span>
+                </div>
+                <div class="nav-item" data-view="bots" style="display:none;">
+                    <i class="fas fa-robot nav-icon"></i>
+                    <span class="nav-label">机器人</span>
+                    <span class="nav-badge" id="badgeBots">0</span>
+                </div>
+                <div class="nav-item" data-view="announcements">
+                    <i class="fas fa-bullhorn nav-icon"></i>
+                    <span class="nav-label">公告</span>
+                </div>
+                <div class="nav-item" data-view="ip-query" id="navIpQuery">
+                    <i class="fas fa-map-marker-alt nav-icon"></i>
+                    <span class="nav-label">查IP端口</span>
+                </div>
+                <div class="nav-item" data-view="bot-create" id="navBotCreate">
+                    <i class="fas fa-user-plus nav-icon"></i>
+                    <span class="nav-label">注册游戏账号</span>
+                </div>
+                <div class="nav-item" data-view="tutorial" id="navTutorial">
+                    <i class="fas fa-book-open nav-icon"></i>
+                    <span class="nav-label">教程</span>
+                </div>
+            </div>
+
+            <div class="sidebar-divider" id="adminDivider" style="display:none;"></div>
+
+            <div class="sidebar-section" id="adminSection" style="display:none;">
+                <div class="sidebar-section-title">管理后台</div>
+                <div class="nav-item" data-view="admin-cards">
+                    <i class="fas fa-key nav-icon"></i>
+                    <span class="nav-label">卡密管理</span>
+                </div>
+                <div class="nav-item" data-view="admin-users">
+                    <i class="fas fa-users-cog nav-icon"></i>
+                    <span class="nav-label">用户管理</span>
+                </div>
+                <div class="nav-item" data-view="admin-logs">
+                    <i class="fas fa-file-medical-alt nav-icon"></i>
+                    <span class="nav-label">系统日志</span>
+                </div>
+                <div class="nav-item" data-view="admin-activity">
+                    <i class="fas fa-history nav-icon"></i>
+                    <span class="nav-label">活动日志</span>
+                </div>
+                <div class="nav-item" data-view="admin-system">
+                    <i class="fas fa-cog nav-icon"></i>
+                    <span class="nav-label">系统管理</span>
+                </div>
+                <div class="nav-item" data-view="admin-ann-logs">
+                    <i class="fas fa-list-alt nav-icon"></i>
+                    <span class="nav-label">公告日志</span>
+                </div>
+                <div class="nav-item" data-view="admin-bots">
+                    <i class="fas fa-robot nav-icon"></i>
+                    <span class="nav-label">机器人管理</span>
+                </div>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="server-status">
+                <span class="status-dot"></span>
+                <span>服务运行中</span>
+            </div>
+            <div style="margin-top:4px;">&copy; 2026 CrystalGate</div>
+        </div>
+    </aside>
+
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- Content Area -->
+    <main class="content" id="content">
+
+        <!-- ==================================================================
+             View: Dashboard
+             ================================================================== -->
+        <section class="view active" id="view-dashboard">
+            <div class="welcome-banner">
+                <h2 id="welcomeTitle">欢迎回来</h2>
+                <p id="welcomeText">这里是您的 CrystalGate 控制中心，管理您的机器人面板与实例。</p>
+                <div class="welcome-time" id="welcomeTime"></div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon blue"><i class="fas fa-th-large"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="statPanels">0</div>
+                        <div class="stat-label">面板总数</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green"><i class="fas fa-robot"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="statActiveBots">0</div>
+                        <div class="stat-label">活跃机器人</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon yellow"><i class="fas fa-server"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="statAccounts">0</div>
+                        <div class="stat-label">游戏账号</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon purple"><i class="fas fa-key"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="statCards">0</div>
+                        <div class="stat-label">卡密数量</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fas fa-clock"></i> 最近活动</div>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn btn-ghost btn-sm" id="toggleActivity" title="折叠/展开" aria-label="折叠或展开最近活动">
+                                <i class="fas fa-chevron-up" id="toggleActivityIcon"></i>
+                            </button>
+                            <button class="btn btn-ghost btn-sm" id="refreshActivity">
+                                <i class="fas fa-sync-alt"></i> 刷新
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body activity-collapse" id="activityCollapse">
+                        <div class="activity-list" id="activityList">
+                            <div class="empty-state">
+                                <i class="fas fa-inbox"></i>
+                                <h3>暂无活动</h3>
+                                <p>最近的操作记录将显示在这里</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fas fa-bolt"></i> 快捷操作</div>
+                    </div>
+                    <div class="card-body">
+                        <div style="display:flex;flex-direction:column;gap:10px;">
+                            <button class="btn btn-secondary btn-block" style="justify-content:flex-start;" data-quick="panels">
+                                <i class="fas fa-plus-circle" style="color:var(--color-primary);"></i> 创建新面板
+                            </button>
+                            <button class="btn btn-secondary btn-block" style="justify-content:flex-start;" data-quick="bot-create">
+                                <i class="fas fa-user-plus" style="color:var(--color-success);"></i> 注册游戏账号
+                            </button>
+                            <button class="btn btn-secondary btn-block" style="justify-content:flex-start;" data-quick="admin-cards" id="quickCards" style="display:none;">
+                                <i class="fas fa-key" style="color:var(--color-warning);"></i> 生成卡密
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             View: Panels List
+             ================================================================== -->
+        <section class="view" id="view-panels">
+            <div class="page-header">
+                <div>
+                    <div class="page-title"><i class="fas fa-th-large"></i> 面板管理</div>
+                    <div class="page-subtitle">管理您的所有机器人面板</div>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-secondary btn-sm" id="refreshPanels">
+                        <i class="fas fa-sync-alt"></i> 刷新
+                    </button>
+                    <button class="btn btn-primary" id="btnCreatePanel">
+                        <i class="fas fa-plus"></i> 创建面板
+                    </button>
+                </div>
+            </div>
+            <div class="scope-tabs" id="panelScopeTabs" style="display:none;">
+                <button type="button" class="scope-tab active" data-panel-scope="mine">
+                    <i class="fas fa-user"></i> 我的面板
+                </button>
+                <button type="button" class="scope-tab" data-panel-scope="all">
+                    <i class="fas fa-globe"></i> 全部面板
+                </button>
+            </div>
+            <div class="panels-grid" id="panelsGrid">
+                <div class="empty-state" id="panelsEmpty">
+                    <i class="fas fa-inbox"></i>
+                    <h3>暂无面板</h3>
+                    <p>点击"创建面板"按钮，使用面板卡密创建您的第一个面板</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             View: Panel Detail (SW-Style Console)
+             ================================================================== -->
+        <section class="view" id="view-panel-detail">
+            <div class="panel-detail-header">
+                <button class="btn btn-ghost btn-sm" id="backToPanels">
+                    <i class="fas fa-arrow-left"></i> 返回
+                </button>
+                <div class="panel-detail-title">
+                    <h2>
+                        <i class="fas fa-server" style="color:var(--color-primary);"></i>
+                        <span id="detailPanelName">面板名称</span>
+                        <span class="badge badge-active" id="detailPanelStatus">active</span>
+                    </h2>
+                    <div class="panel-id-text">Panel ID: <span id="detailPanelId" class="mono">-</span></div>
+                </div>
+                <div style="margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+                    <span class="status-dot" id="panelStatusDot" style="background:var(--text-tertiary);"></span>
+                    <span id="panelStatusText" style="font-size:13px;color:var(--text-secondary);">未启动</span>
+                </div>
+                <div class="panel-detail-actions">
+                    <button class="btn btn-success btn-sm" id="btnStartBot">
+                        <i class="fas fa-play"></i> 启动
+                    </button>
+                    <button class="btn btn-danger btn-sm hidden" id="btnStopBot">
+                        <i class="fas fa-stop"></i> 停止
+                    </button>
+                    <button class="btn btn-warning btn-sm hidden" id="btnRestartBot">
+                        <i class="fas fa-redo"></i> 重启
+                    </button>
+                    <button class="btn btn-secondary btn-sm" id="btnRenewPanel">
+                        <i class="fas fa-sync-alt"></i> 续费
+                    </button>
+                    <button class="btn btn-danger btn-sm" id="btnDeletePanel">
+                        <i class="fas fa-trash"></i> 删除
+                    </button>
+                </div>
+            </div>
+
+            <div class="console-box">
+                <div class="console-tabs">
+                    <div class="console-tab active" data-console-tab="console">
+                        <i class="fas fa-terminal"></i> 控制台
+                    </div>
+                    <div class="console-tab" data-console-tab="logs">
+                        <i class="fas fa-list"></i> 日志
+                    </div>
+                    <div class="console-tab" data-console-tab="files">
+                        <i class="fas fa-folder"></i> 文件
+                    </div>
+                    <div class="console-tab" data-console-tab="plugins">
+                        <i class="fas fa-puzzle-piece"></i> 插件
+                    </div>
+                    <div class="console-tab" data-console-tab="settings">
+                        <i class="fas fa-cog"></i> 设置
+                    </div>
+                </div>
+
+                <div class="console-body">
+                    <!-- Console Tab -->
+                    <div class="console-panel active" id="ctab-console">
+                        <div class="terminal-toolbar">
+                            <span class="toolbar-info" id="consoleInfo">等待连接...</span>
+                            <div style="position:relative;display:inline-block;">
+                                <button class="btn btn-secondary btn-sm" id="btnQuickCmd" title="快捷命令">
+                                    <i class="fas fa-bolt"></i> 快捷命令 <i class="fas fa-chevron-down" style="font-size:10px;"></i>
+                                </button>
+                                <div id="quickCmdMenu" style="display:none;position:absolute;top:100%;right:0;background:var(--bg-card);border:1px solid var(--border-default);border-radius:var(--radius-md);box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:100;min-width:200px;padding:4px 0;">
+                                    <div class="quick-cmd-item" data-cmd="help" style="padding:8px 16px;cursor:pointer;font-size:13px;">帮助 (help)</div>
+                                    <div class="quick-cmd-item" data-cmd="list" style="padding:8px 16px;cursor:pointer;font-size:13px;">在线列表 (//list)</div>
+                                    <div class="quick-cmd-item" data-cmd="say" style="padding:8px 16px;cursor:pointer;font-size:13px;">发消息 (/say)</div>
+                                    <div class="quick-cmd-item" data-cmd="menu" style="padding:8px 16px;cursor:pointer;font-size:13px;">主菜单 (menu)</div>
+                                </div>
+                            </div>
+                            <button class="btn btn-ghost btn-sm" id="consoleClearBtn" title="清屏">
+                                <i class="fas fa-eraser"></i>
+                            </button>
+                            <button class="btn btn-ghost btn-sm" id="consoleAutoscrollBtn" title="自动滚动">
+                                <i class="fas fa-arrow-down"></i>
+                            </button>
+                        </div>
+                        <div class="terminal-output" id="terminalOutput">
+                            <div class="terminal-line system"><span class="ts">[SYSTEM]</span> CrystalGate 控制台已就绪</div>
+                            <div class="terminal-line"><span class="ts">[SYSTEM]</span> 点击"启动"按钮启动机器人; 启动后可用 /say 聊天、//命令</div>
+                        </div>
+                        <div class="terminal-input-row">
+                            <span class="terminal-prompt">$</span>
+                            <input type="text" class="terminal-input" id="terminalInput"
+                                   placeholder="输入命令后按回车发送..." autocomplete="off" spellcheck="false">
+                            <button class="btn btn-primary btn-sm" id="terminalSendBtn">
+                                <i class="fas fa-paper-plane"></i> 发送
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Logs Tab -->
+                    <div class="console-panel" id="ctab-logs">
+                        <div class="terminal-toolbar">
+                            <span class="toolbar-info">面板日志</span>
+                            <button class="btn btn-ghost btn-sm" id="refreshPanelLogs">
+                                <i class="fas fa-sync-alt"></i> 刷新
+                            </button>
+                        </div>
+                        <div class="log-viewer" id="panelLogViewer">
+                            <div class="empty-state">
+                                <i class="fas fa-file-alt"></i>
+                                <h3>暂无日志</h3>
+                                <p>面板操作日志将显示在这里</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Files Tab -->
+                    <div class="console-panel" id="ctab-files">
+                        <div class="file-tab-toolbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                            <div style="font-weight:600;font-size:14px;">文件管理</div>
+                            <div style="display:flex;gap:8px;">
+                                <input type="file" id="fileUploadInput" style="display:none;" multiple>
+                                <button class="btn btn-primary btn-sm" id="btnUploadFile">
+                                    <i class="fas fa-upload"></i> 上传文件
+                                </button>
+                                <button class="btn btn-secondary btn-sm" id="btnRefreshFiles">
+                                    <i class="fas fa-sync-alt"></i> 刷新
+                                </button>
+                            </div>
+                        </div>
+                        <div id="fileGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;"></div>
+                    </div>
+
+                    <!-- Plugins Tab -->
+                    <div class="console-panel" id="ctab-plugins">
+                        <div class="file-tab-toolbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                            <div style="font-weight:600;font-size:14px;">插件管理</div>
+                            <div style="display:flex;gap:8px;">
+                                <input type="file" id="pluginUploadInput" style="display:none;" accept=".py,.zip,.jar">
+                                <button class="btn btn-primary btn-sm" id="btnUploadPlugin">
+                                    <i class="fas fa-plus"></i> 安装插件
+                                </button>
+                                <button class="btn btn-secondary btn-sm" id="btnRefreshPlugins">
+                                    <i class="fas fa-sync-alt"></i> 刷新
+                                </button>
+                            </div>
+                        </div>
+                        <div id="pluginList" style="display:flex;flex-direction:column;gap:8px;"></div>
+                    </div>
+
+                    <!-- Settings Tab -->
+                    <div class="console-panel" id="ctab-settings">
+                        <div class="terminal-toolbar">
+                            <span class="toolbar-info">机器人配置</span>
+                        </div>
+                        <div class="settings-form">
+                            <form id="botConfigForm">
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label class="form-label" for="botConfigAccount">
+                                            <i class="fas fa-user-check"></i> 机器人账号
+                                        </label>
+                                        <div style="padding:10px 14px;background:var(--bg-secondary);border:1px solid var(--border-default);border-radius:var(--radius-md);font-size:13px;color:var(--text-secondary);" id="botConfigAccountInfo">
+                                            系统自动分配 · 账号专属本面板
+                                        </div>
+                                        <div class="form-hint" style="font-size:11px;color:var(--text-tertiary);margin-top:4px;">
+                                            账号由系统自动分配, 一个账号只归一个面板使用; 被封禁时启动会提示重新注册。
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="botConfigServerCode">
+                                            <i class="fas fa-server"></i> 服务器/房间编号
+                                        </label>
+                                        <input type="text" class="form-input mono" id="botConfigServerCode" placeholder="服务器/房间编号">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="botConfigServerType">
+                                            <i class="fas fa-network-wired"></i> 服务器类型
+                                        </label>
+                                        <select class="form-input filter-select" id="botConfigServerType" style="width:100%;">
+                                            <option value="rental">租赁服</option>
+                                            <option value="lobby">联机大厅</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group hidden" id="botConfigAccountModeGroup">
+                                        <label class="form-label" for="botConfigAccountMode">
+                                            <i class="fas fa-users"></i> 账号来源 (仅管理员)
+                                        </label>
+                                        <select class="form-input filter-select" id="botConfigAccountMode" style="width:100%;">
+                                            <option value="pool">公益号池随机账号</option>
+                                            <option value="own">自注册账号 (绑定本面板)</option>
+                                        </select>
+                                        <div class="form-hint" style="font-size:11px;color:var(--text-tertiary);margin-top:4px;">
+                                            pool=启动时从公益号池随机分配; own=使用用户自己注册绑定的账号。
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="margin-top:14px;font-size:12px;color:var(--text-tertiary);">
+                                    <i class="fas fa-magic"></i> 配置修改后自动保存 (无需点击保存)
+                                </div>
+                            </form>
+
+                        <!-- 接入点管理 (CrystalGate 专属) -->
+                        <div style="margin-top:20px;padding:16px;background:var(--bg-secondary);border-radius:8px;">
+                            <h4 style="margin:0 0 12px 0;font-size:14px;display:flex;align-items:center;gap:8px;">
+                                <i class="fas fa-plug" style="color:var(--accent);"></i>
+                                CrystalGate 接入点
+                            </h4>
+                            <p style="font-size:12px;color:var(--text-tertiary);margin:0 0 12px 0;">
+                                进服客户端 (flowers-for-machines) 已内置, 无需额外配置。
+                            </p>
+                            <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                                <div class="ap-card" style="flex:1;min-width:160px;padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-primary);">
+                                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                                        <span style="font-size:16px;">🔮</span>
+                                        <strong style="font-size:13px;">CrystalGate Client</strong>
+                                    </div>
+                                    <div style="font-size:12px;color:var(--text-tertiary);">状态: <span style="color:#22c55e;font-weight:600;">已内置</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             View: Bots List
+             ================================================================== -->
+        <section class="view" id="view-bots">
+            <div class="page-header">
+                <div>
+                    <div class="page-title"><i class="fas fa-robot"></i> 机器人管理</div>
+                    <div class="page-subtitle">查看和管理所有机器人实例</div>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-secondary btn-sm" id="refreshBots">
+                        <i class="fas fa-sync-alt"></i> 刷新
+                    </button>
+                </div>
+            </div>
+            <div class="bots-list" id="botsList">
+                <div class="empty-state" id="botsEmpty">
+                    <i class="fas fa-robot"></i>
+                    <h3>暂无机器人</h3>
+                    <p>前往面板详情页面创建机器人实例</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             View: Admin - Card Keys
+             ================================================================== -->
+        <section class="view" id="view-admin-cards">
+            <div class="page-header">
+                <div>
+                    <div class="page-title"><i class="fas fa-key"></i> 卡密管理</div>
+                    <div class="page-subtitle">创建和管理注册卡密、面板卡密、续期卡密</div>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-secondary btn-sm" id="refreshCards">
+                        <i class="fas fa-sync-alt"></i> 刷新
+                    </button>
+                    <button class="btn btn-primary" id="btnCreateCard">
+                        <i class="fas fa-plus"></i> 生成卡密
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Summary -->
+            <div class="stats-summary" id="cardStatsSummary">
+                <div class="summary-item">
+                    <div class="summary-value" style="color:var(--color-primary);" id="cardStatTotal">0</div>
+                    <div class="summary-label">总卡密</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" style="color:var(--color-success);" id="cardStatUnused">0</div>
+                    <div class="summary-label">未使用</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" style="color:var(--text-secondary);" id="cardStatUsed">0</div>
+                    <div class="summary-label">已使用</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" style="color:var(--color-danger);" id="cardStatRevoked">0</div>
+                    <div class="summary-label">已撤销</div>
+                </div>
+            </div>
+
+            <!-- Cards Table -->
+            <div class="card" style="margin-bottom:20px;">
+                <div class="card-header" style="cursor:pointer;" id="cardsListHeader" title="点击折叠/展开">
+                    <div class="card-title"><i class="fas fa-list"></i> 卡密列表 <span id="cardsListToggle" style="font-size:11px;color:var(--text-tertiary);margin-left:6px;">▼ 已展开</span></div>
+                    <div class="filter-bar" style="margin-bottom:0;">
+                        <select class="filter-select" id="cardFilterType">
+                            <option value="">全部类型</option>
+                            <option value="register">注册卡密</option>
+                            <option value="panel">面板卡密</option>
+                            <option value="renewal">续期卡密</option>
+                        </select>
+                        <select class="filter-select" id="cardFilterStatus">
+                            <option value="">全部状态</option>
+                            <option value="unused">未使用</option>
+                            <option value="used">已使用</option>
+                        </select>
+                        <label class="filter-checkbox" style="display:none;">
+                            <input type="checkbox" id="cardShowRevoked">
+                            <span>显示已撤销</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="table-wrap" style="border:none;border-radius:0;" id="cardsTableWrap">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>卡密</th>
+                                <th>类型</th>
+                                <th>状态</th>
+                                <th>时长</th>
+                                <th>剩余次数</th>
+                                <th>创建时间</th>
+                                <th>使用时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cardsTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Card Logs (创建/使用/删除) -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-history"></i> 卡密日志</div>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <select class="filter-select" id="cardLogType" style="padding:5px 8px;">
+                            <option value="creation">创建/删除日志</option>
+                            <option value="usage">使用日志</option>
+                        </select>
+                        <button class="btn btn-ghost btn-sm" id="refreshCardLogs">
+                            <i class="fas fa-sync-alt"></i> 刷新
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="cardCreationLogs">
+                        <div class="empty-state">
+                            <i class="fas fa-file-alt"></i>
+                            <h3>暂无日志</h3>
+                            <p>卡密操作记录将显示在这里</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             View: Admin - Users
+             ================================================================== -->
+        <section class="view" id="view-admin-users">
+            <div class="page-header">
+                <div>
+                    <div class="page-title"><i class="fas fa-users-cog"></i> 用户管理</div>
+                    <div class="page-subtitle">管理平台用户账号</div>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-secondary btn-sm" id="refreshUsers">
+                        <i class="fas fa-sync-alt"></i> 刷新
+                    </button>
+                    <button class="btn btn-primary" id="btnCreateUser">
+                        <i class="fas fa-user-plus"></i> 创建用户
+                    </button>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>用户名</th>
+                            <th>角色</th>
+                            <th>状态</th>
+                            <th>注册时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             View: Admin - System Logs
+             ================================================================== -->
+        <section class="view" id="view-admin-logs">
+            <div class="page-header">
+                <div>
+                    <div class="page-title"><i class="fas fa-file-medical-alt"></i> 系统日志</div>
+                    <div class="page-subtitle">查看系统运行日志</div>
+                </div>
+                <div class="page-actions">
+                    <div class="filter-bar" style="margin-bottom:0;">
+                        <select class="filter-select" id="logFilterLevel">
+                            <option value="">全部级别</option>
+                            <option value="info">Info</option>
+                            <option value="success">Success</option>
+                            <option value="warn">Warning</option>
+                            <option value="error">Error</option>
+                        </select>
+                        <button class="btn btn-secondary btn-sm" id="refreshSysLogs">
+                            <i class="fas fa-sync-alt"></i> 刷新
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-body" style="padding:0;">
+                    <div class="log-viewer" id="systemLogViewer" style="border-radius:var(--radius-lg);">
+                        <div class="empty-state">
+                            <i class="fas fa-file-alt"></i>
+                            <h3>暂无日志</h3>
+                            <p>系统日志将显示在这里</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- View: Admin - Activity Log -->
+        <section class="view" id="view-admin-activity">
+            <div class="page-header">
+                <div>
+                    <div class="page-title"><i class="fas fa-history"></i> 活动日志</div>
+                    <div class="page-subtitle">查看用户登录、注册等活动记录</div>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-secondary btn-sm" id="refreshActivityLog">
+                        <i class="fas fa-sync-alt"></i> 刷新
+                    </button>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-body" style="padding:0;">
+                    <div id="activityLogList" style="max-height:600px; overflow-y:auto;">
+                        <div class="empty-state">
+                            <i class="fas fa-history"></i>
+                            <h3>暂无活动记录</h3>
+                            <p>用户登录、注册等活动记录将显示在这里</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             View: Admin System (系统管理)
+             ================================================================== -->
+        <section class="view" id="view-admin-system">
+            <div class="page-header">
+                <div>
+                    <div class="page-title"><i class="fas fa-cog"></i> 系统管理</div>
+                    <div class="page-subtitle">安全防护、封号检测、系统统计</div>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-secondary btn-sm" id="refreshSystemAdmin">
+                        <i class="fas fa-sync-alt"></i> 刷新
+                    </button>
+                </div>
+            </div>
+
+            <div class="stats-grid" style="margin-bottom:20px;">
+                <div class="stat-card">
+                    <div class="stat-icon blue"><i class="fas fa-users"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="sysStatUsers">0</div>
+                        <div class="stat-label">用户总数</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green"><i class="fas fa-th-large"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="sysStatPanels">0</div>
+                        <div class="stat-label">面板总数</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon yellow"><i class="fas fa-robot"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="sysStatBots">0</div>
+                        <div class="stat-label">可用账号</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon purple"><i class="fas fa-key"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="sysStatCards">0</div>
+                        <div class="stat-label">卡密总数</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <!-- 封号检测 -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fas fa-ban"></i> 封号检测</div>
+                        <span class="badge" id="banBadge">正常</span>
+                    </div>
+                    <div class="card-body">
+                        <div style="display:flex;flex-direction:column;gap:12px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <span style="color:var(--text-secondary);">追踪账号数</span>
+                                <span id="banTracked" style="font-weight:600;">0</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <span style="color:var(--text-secondary);">疑似封号数</span>
+                                <span id="banSuspected" style="font-weight:600;color:var(--color-danger);">0</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <span style="color:var(--text-secondary);">检测阈值</span>
+                                <span id="banThreshold" style="font-weight:600;">3 次</span>
+                            </div>
+                            <div id="bannedAccountsList" style="max-height:150px;overflow-y:auto;">
+                                <div class="empty-state" style="padding:16px;">
+                                    <i class="fas fa-check-circle" style="color:var(--color-success);"></i>
+                                    <p style="font-size:13px;margin-top:4px;">暂无封号记录</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4399 账号池管理 -->
+            <div class="card" style="margin-top:20px;">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-users"></i> 4399 账号池管理</div>
+                    <span class="badge badge-warning" id="sauthPoolBadge">0 个账号</span>
+                </div>
+                <div class="card-body">
+                    <div style="display:flex;flex-direction:column;gap:16px;">
+                        <!-- 添加账号表单 -->
+                        <div style="padding:16px;background:var(--bg-input);border-radius:var(--radius-md);">
+                            <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--text-primary);">
+                                <i class="fas fa-plus-circle"></i> 添加 4399 账号
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;">
+                                <div>
+                                    <label class="form-label" style="font-size:12px;">4399 用户名</label>
+                                    <input type="text" class="form-input" id="sauthAddUser" placeholder="4399用户名" style="font-size:13px;">
+                                </div>
+                                <div>
+                                    <label class="form-label" style="font-size:12px;">4399 密码</label>
+                                    <input type="password" class="form-input" id="sauthAddPass" placeholder="4399密码" style="font-size:13px;">
+                                </div>
+                                <button class="btn btn-primary" id="sauthAddBtn" style="height:38px;">
+                                    <i class="fas fa-plus"></i> 添加
+                                </button>
+                            </div>
+                            <div style="font-size:11px;color:var(--text-tertiary);margin-top:8px;">
+                                <i class="fas fa-info-circle"></i> 添加真实4399账号后, 系统会自动登录获取sauth_json, 机器人连接时自动使用
+                            </div>
+                        </div>
+
+                        <!-- 账号列表 -->
+                        <div id="sauthAccountsList" style="display:flex;flex-direction:column;gap:8px;">
+                            <div class="empty-state" style="padding:20px;">
+                                <i class="fas fa-users-slash" style="color:var(--text-tertiary);"></i>
+                                <p style="font-size:13px;margin-top:4px;">暂无4399账号, 请先添加</p>
+                            </div>
+                        </div>
+
+                        <!-- 刷新按钮 -->
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn btn-success btn-block" id="sauthRefreshBtn">
+                                <i class="fas fa-sync-alt"></i> 手动刷新 sauth_json
+                            </button>
+                        </div>
+
+                        <!-- 刷新状态 -->
+                        <div style="padding:12px;background:var(--bg-input);border-radius:var(--radius-md);">
+                            <div style="font-size:12px;color:var(--text-secondary);display:flex;justify-content:space-between;">
+                                <span>缓存状态</span>
+                                <span id="sauthCacheStatus" style="font-weight:600;">未缓存</span>
+                            </div>
+                            <div style="font-size:12px;color:var(--text-secondary);display:flex;justify-content:space-between;margin-top:4px;">
+                                <span>活跃/失败/禁用</span>
+                                <span id="sauthAccountStats" style="font-weight:600;">0 / 0 / 0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 详细统计 -->
+            <div class="card" style="margin-top:20px;">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-chart-bar"></i> 详细统计</div>
+                </div>
+                <div class="card-body">
+                    <div id="systemStatsDetail" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;">
+                        <div class="empty-state">
+                            <i class="fas fa-chart-bar"></i>
+                            <p style="font-size:13px;">加载中...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             View: Admin Bots (机器人管理)
+             ================================================================== -->
+        <section class="view" id="view-admin-bots">
+            <div class="page-header">
+                <div>
+                    <div class="page-title"><i class="fas fa-robot"></i> 机器人管理</div>
+                    <div class="page-subtitle">查看全部机器人账号: 名称、归属、创建时间、封禁状态</div>
+                </div>
+                <div class="page-actions">
+                    <select id="botManageFilter" class="form-input filter-select" style="width:auto;padding:6px 10px;">
+                        <option value="all">全部</option>
+                        <option value="usable">可用(号池)</option>
+                        <option value="in_use">使用中</option>
+                        <option value="banned">已封禁</option>
+                    </select>
+                    <button class="btn btn-secondary btn-sm" id="refreshBotManage">
+                        <i class="fas fa-sync-alt"></i> 刷新
+                    </button>
+                </div>
+            </div>
+
+            <div class="stats-grid" style="margin-bottom:20px;">
+                <div class="stat-card">
+                    <div class="stat-icon blue"><i class="fas fa-robot"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="botManageTotal">0</div>
+                        <div class="stat-label">机器人总数</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="botManageUsable">0</div>
+                        <div class="stat-label">可用</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon yellow"><i class="fas fa-spinner"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="botManageInUse">0</div>
+                        <div class="stat-label">使用中</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon red"><i class="fas fa-ban"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="botManageBanned">0</div>
+                        <div class="stat-label">已封禁</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div style="display:flex;gap:10px;margin-bottom:14px;align-items:center;flex-wrap:wrap;">
+                    <input type="text" id="botManageSearch" class="form-input" placeholder="搜索名称/UID/玩家名" style="flex:1;max-width:280px;">
+                    <span style="font-size:12px;color:var(--text-tertiary);">账号池: 号池账号 = 可用, CG_ 自注册号已被网易风控, 封禁由进服时自动检测标记</span>
+                </div>
+                <div class="table-wrap" style="margin-top:16px;">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>机器人名称</th>
+                            <th>真实玩家名</th>
+                            <th>来源</th>
+                            <th>归属用户</th>
+                            <th>创建时间</th>
+                            <th>状态</th>
+                            <th>UID</th>
+                        </tr>
+                    </thead>
+                    <tbody id="botManageTable">
+                        <tr><td colspan="7" style="text-align:center;color:var(--text-tertiary);">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             View: Announcements (公告)
+             ================================================================== -->
+        <section class="view" id="view-announcements">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <h2 style="font-size:22px;font-weight:700;"><i class="fas fa-bullhorn" style="color:var(--color-primary);"></i> 公告</h2>
+                <button class="btn btn-primary" id="annCreateBtn" style="display:none;">
+                    <i class="fas fa-plus"></i> 发布公告
+                </button>
+            </div>
+            <div id="annList" style="display:flex;flex-direction:column;gap:16px;">
+                <div class="empty-state">
+                    <i class="fas fa-bullhorn"></i>
+                    <p style="font-size:13px;">加载中...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             View: Admin Announcement Logs (公告日志)
+             ================================================================== -->
+        <section class="view" id="view-admin-ann-logs">
+            <h2 style="font-size:22px;font-weight:700;margin-bottom:20px;"><i class="fas fa-list-alt" style="color:var(--color-primary);"></i> 公告活动日志</h2>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-history"></i> 所有操作记录</div>
+                </div>
+                <div class="card-body">
+                    <div id="annLogsList" style="max-height:600px;overflow-y:auto;">
+                        <div class="empty-state">
+                            <i class="fas fa-list"></i>
+                            <p style="font-size:13px;">加载中...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             View: Shop (商店)
+             ================================================================== -->
+        <section class="view" id="view-shop">
+            <div class="page-header">
+                <div>
+                    <div class="page-title"><i class="fas fa-store"></i> 商店</div>
+                    <div class="page-subtitle">使用余额购买卡密和文件，也可上传文件售卖</div>
+                </div>
+                <div class="page-actions">
+                    <span class="topbar-balance" id="shopBalance"><i class="fas fa-coins"></i> <span id="shopBalanceText">0.00</span></span>
+                    <button class="btn btn-primary btn-sm" id="showUploadBtn"><i class="fas fa-upload"></i> 上传文件售卖</button>
+                </div>
+            </div>
+            <!-- Upload form (hidden by default) - 上传文件到商店售卖 -->
+            <div class="card" id="uploadFormCard" style="display:none;margin-bottom:16px;">
+                <div class="card-header"><div class="card-title"><i class="fas fa-upload"></i> 上传新文件</div></div>
+                <div class="card-body">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div><div class="form-group"><label class="form-label">文件名称 (最多18字)</label><input type="text" class="form-input" id="uploadName" maxlength="18" placeholder="文件名称"></div></div>
+                        <div><div class="form-group"><label class="form-label">分类</label><select class="form-input" id="uploadCategory"><option value="plugin">插件</option><option value="building">建筑</option></select></div></div>
+                        <div><div class="form-group"><label class="form-label">价格 (余额)</label><input type="number" class="form-input" id="uploadPrice" min="0" step="0.01" value="0" placeholder="0为免费"></div></div>
+                        <div><div class="form-group"><label class="form-label">选择文件 (最大512KB)</label><input type="file" class="form-input" id="uploadFile"></div></div>
+                    </div>
+                    <div class="form-group" style="margin-top:8px;"><label class="form-label">介绍 (最多60字)</label><textarea class="form-input" id="uploadDesc" maxlength="60" rows="2" placeholder="文件介绍"></textarea></div>
+                    <button class="btn btn-primary btn-sm" id="confirmUploadBtn" style="margin-top:8px;"><i class="fas fa-check"></i> 确认上传</button>
+                </div>
+            </div>
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-header"><div class="card-title"><i class="fas fa-key"></i> 卡密板块</div></div>
+                    <div class="card-body"><div class="products-grid" id="cardProducts"></div></div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><div class="card-title"><i class="fas fa-plug"></i> 插件文件</div></div>
+                    <div class="card-body"><div class="products-grid" id="pluginProducts"></div></div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><div class="card-title"><i class="fas fa-cube"></i> 建筑文件</div></div>
+                    <div class="card-body"><div class="products-grid" id="buildingProducts"></div></div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><div class="card-title"><i class="fas fa-receipt"></i> 我的订单</div></div>
+                    <div class="card-body"><div id="myOrders" style="max-height:400px;overflow-y:auto;"></div></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             View: Files (我的文件)
+             ================================================================== -->
+        <section class="view" id="view-files">
+            <div class="page-header">
+                <div>
+                    <div class="page-title"><i class="fas fa-folder"></i> 我的文件</div>
+                    <div class="page-subtitle">管理您上传的文件 (审核状态、价格等)</div>
+                </div>
+            </div>
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-header"><div class="card-title"><i class="fas fa-user"></i> 我的文件</div></div>
+                    <div class="card-body"><div id="myFilesList" style="max-height:600px;overflow-y:auto;"></div></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             View: Runner (运行器)
+             ================================================================== -->
+        <section class="view" id="view-runner">
+            <div class="page-header">
+                <div>
+                    <div class="page-title"><i class="fas fa-terminal"></i> 命令运行器</div>
+                    <div class="page-subtitle">上传脚本并执行，实时查看输出（类Termux终端）</div>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-secondary btn-sm" id="runnerRefreshFilesBtn"><i class="fas fa-sync-alt"></i> 刷新</button>
+                </div>
+            </div>
+
+            <!-- 文件管理 (可折叠, 默认折叠) -->
+            <div class="card" style="margin-bottom:16px;">
+                <div class="card-header" style="cursor:pointer;" id="runnerFileToggle">
+                    <div class="card-title"><i class="fas fa-folder-open" id="runnerFileToggleIcon"></i> 文件管理 <span style="font-size:12px;color:var(--text-tertiary);">(点击展开/折叠)</span></div>
+                </div>
+                <div class="card-body" id="runnerFileBody" style="display:none;">
+                    <div id="runnerFilesList" class="runner-files-list"></div>
+                    <input type="file" id="runnerFileInput" style="display:none;" accept=".py,.go,.java,.js,.sh,.txt,.exe,.bin,.ts,.rb,.pl,.php,.rs,.c,.cpp,.json,.yaml,.yml,.xml,.html,.css,.md,.sql,.bat,.cmd,.ps1,.lua,.toml,.ini,.cfg,.conf,.log,.csv,.zip,.tar,.gz,.7z,.rar,.mcstructure,.schematic,.nbt,.schem,.litematic,.bdx,.mcworld">
+                    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+                        <button class="btn btn-primary runner-upload-btn" id="runnerUploadBtn" style="flex:1;min-height:48px;"><i class="fas fa-cloud-upload-alt"></i> 上传文件</button>
+                        <button class="btn btn-secondary" id="runnerCreateFileBtn" style="min-height:48px;"><i class="fas fa-file-plus"></i> 新建</button>
+                        <button class="btn btn-secondary" id="runnerCreateDirBtn" style="min-height:48px;"><i class="fas fa-folder-plus"></i> 新建目录</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 命令执行 -->
+            <div class="card" style="margin-bottom:16px;">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-keyboard"></i> 命令执行</div>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label"><i class="fas fa-terminal"></i> 命令</label>
+                        <textarea class="form-input" id="runnerCommand" rows="3" placeholder="python3 script.py&#10;pip install requests&#10;ls -la&#10;go run main.go" style="font-family:monospace;font-size:14px;"></textarea>
+                    </div>
+                    <!-- 快捷命令按钮 -->
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+                        <button class="btn btn-secondary btn-sm runner-quick-cmd" data-cmd="pip install " style="font-size:12px;"><i class="fab fa-python"></i> pip install</button>
+                        <button class="btn btn-secondary btn-sm runner-quick-cmd" data-cmd="pip list" style="font-size:12px;"><i class="fab fa-python"></i> pip list</button>
+                        <button class="btn btn-secondary btn-sm runner-quick-cmd" data-cmd="ls -la" style="font-size:12px;"><i class="fas fa-list"></i> ls -la</button>
+                        <button class="btn btn-secondary btn-sm runner-quick-cmd" data-cmd="pwd" style="font-size:12px;"><i class="fas fa-map-marker-alt"></i> pwd</button>
+                        <button class="btn btn-secondary btn-sm runner-quick-cmd" data-cmd="python3 --version" style="font-size:12px;"><i class="fab fa-python"></i> 版本</button>
+                        <button class="btn btn-secondary btn-sm runner-quick-cmd" data-cmd="cat " style="font-size:12px;"><i class="fas fa-file-code"></i> cat</button>
+                        <button class="btn btn-secondary btn-sm runner-quick-cmd" data-cmd="find . -name '*.py'" style="font-size:12px;"><i class="fas fa-search"></i> 查找</button>
+                    </div>
+                    <div class="runner-cwd-timeout">
+                        <div class="form-group runner-cwd-group">
+                            <label class="form-label"><i class="fas fa-folder"></i> 工作目录</label>
+                            <input type="text" class="form-input" id="runnerCwd" value="/workspace" placeholder="/workspace">
+                        </div>
+                        <div class="form-group runner-timeout-group">
+                            <label class="form-label"><i class="fas fa-clock"></i> 超时(秒)</label>
+                            <input type="number" class="form-input" id="runnerTimeout" value="30" min="1" max="600">
+                        </div>
+                    </div>
+                    <div class="runner-action-row">
+                        <button class="btn btn-primary runner-action-btn" id="runnerExecuteBtn"><i class="fas fa-play"></i> 执行</button>
+                        <button class="btn btn-danger runner-action-btn" id="runnerStopBtn" disabled><i class="fas fa-stop"></i> 停止</button>
+                        <button class="btn btn-secondary runner-action-btn" id="runnerClearBtn"><i class="fas fa-eraser"></i> 清屏</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 输出 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-stream"></i> 输出</div>
+                    <div id="runnerStatus" class="runner-status">就绪</div>
+                </div>
+                <div class="card-body" style="padding:0;">
+                    <pre id="runnerOutput" class="runner-output"><span style="color:#586069;">$ 等待执行命令...</span></pre>
+                    <!-- 交互输入行 (Termux 风格, 进程运行时启用) -->
+                    <div class="runner-input-row">
+                        <i class="fas fa-angle-right runner-input-prompt"></i>
+                        <input type="text" id="runnerInput" class="runner-input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="运行程序后可在此输入..." disabled>
+                        <button class="btn btn-secondary btn-sm" id="runnerInputSendBtn" disabled style="min-width:auto;padding:4px 12px;"><i class="fas fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             View: Builder (建筑工具)
+             ================================================================== -->
+        <section class="view" id="view-builder">
+            <div class="page-header">
+                <div class="page-title"><i class="fas fa-cubes"></i> 建筑工具</div>
+                <div class="page-subtitle">Minecraft建筑文件处理工具</div>
+            </div>
+
+            <!-- 功能选项卡 -->
+            <div class="builder-tabs">
+                <button class="builder-tab active" data-tab="parse">文件解析</button>
+                <button class="builder-tab" data-tab="pixelart">像素画</button>
+                <button class="builder-tab" data-tab="convert">格式转换</button>
+                <button class="builder-tab" data-tab="music">音乐生成</button>
+                <button class="builder-tab" data-tab="skin">皮肤雕像</button>
+                <button class="builder-tab" data-tab="item">自定义物品</button>
+                <button class="builder-tab" data-tab="cmdchain">命令链工具</button>
+            </div>
+
+            <!-- 文件解析面板 -->
+            <div class="builder-panel active" id="builder-panel-parse">
+                <div class="card">
+                    <h4>上传建筑文件</h4>
+                    <p class="builder-hint">支持格式: .mcstructure .schematic .nbt .schem .litematic .bdx .building .mcworld</p>
+                    <input type="file" id="builderParseFile" accept=".mcstructure,.schematic,.nbt,.schem,.litematic,.bdx,.building,.mcworld">
+                    <button class="btn btn-primary" id="builderParseBtn">解析文件</button>
+                </div>
+                <div class="card builder-result" id="builderParseResult" style="display:none;">
+                    <h4>解析结果</h4>
+                    <div id="builderParseInfo"></div>
+                    <div id="builderBlockStats"></div>
+                </div>
+            </div>
+
+            <!-- 像素画面板 -->
+            <div class="builder-panel" id="builder-panel-pixelart">
+                <div class="card">
+                    <h4>图片转像素画</h4>
+                    <p class="builder-hint">上传图片，选择调色板和算法，生成Minecraft像素画建筑文件</p>
+                    <input type="file" id="builderPixelArtFile" accept="image/*">
+                    <div class="builder-options">
+                        <label>调色板:
+                            <select id="builderPalette">
+                                <option value="concrete">混凝土</option>
+                                <option value="wool">羊毛</option>
+                                <option value="terracotta">陶瓦</option>
+                                <option value="concrete_powder">混凝土粉末</option>
+                                <option value="stained_glass">染色玻璃</option>
+                                <option value="all">全部</option>
+                            </select>
+                        </label>
+                        <label>抖动算法:
+                            <select id="builderDithering">
+                                <option value="none">无</option>
+                                <option value="floyd">Floyd-Steinberg</option>
+                                <option value="ordered">有序抖动</option>
+                                <option value="random">随机抖动</option>
+                                <option value="jarvis">Jarvis</option>
+                            </select>
+                        </label>
+                        <label>方向:
+                            <select id="builderDirection">
+                                <option value="horizontal">水平</option>
+                                <option value="vertical">垂直</option>
+                            </select>
+                        </label>
+                    </div>
+                    <button class="btn btn-primary" id="builderPixelArtBtn">生成像素画</button>
+                </div>
+                <div class="card builder-result" id="builderPixelArtResult" style="display:none;">
+                    <h4>生成结果</h4>
+                    <div id="builderPixelArtInfo"></div>
+                    <button class="btn btn-success" id="builderPixelArtDownload">下载 .mcstructure</button>
+                </div>
+            </div>
+
+            <!-- 格式转换面板 -->
+            <div class="builder-panel" id="builder-panel-convert">
+                <div class="card">
+                    <h4>建筑格式转换</h4>
+                    <p class="builder-hint">上传建筑文件，选择目标格式进行转换</p>
+                    <input type="file" id="builderConvertFile" accept=".mcstructure,.schematic,.nbt,.schem,.litematic,.bdx,.building">
+                    <label>目标格式:
+                        <select id="builderTargetFormat">
+                            <option value="mcstructure">.mcstructure (基岩版)</option>
+                            <option value="schematic">.schematic (Java版)</option>
+                            <option value="nbt">.nbt (Java版NBT)</option>
+                            <option value="bdx">.bdx (BDX格式)</option>
+                            <option value="building">.building (网易版)</option>
+                        </select>
+                    </label>
+                    <button class="btn btn-primary" id="builderConvertBtn">转换格式</button>
+                </div>
+            </div>
+
+            <!-- 音乐面板 -->
+            <div class="builder-panel" id="builder-panel-music">
+                <div class="card">
+                    <h4>音乐转建筑</h4>
+                    <p class="builder-hint">上传MIDI或NBS文件，生成Minecraft音符盒/命令方块建筑</p>
+                    <input type="file" id="builderMusicFile" accept=".mid,.midi,.nbs">
+                    <div class="builder-options">
+                        <label>速度: <input type="number" id="builderMusicSpeed" value="120" min="40" max="300"></label>
+                        <label>音量: <input type="number" id="builderMusicVolume" value="100" min="0" max="100"></label>
+                        <label>循环: <input type="checkbox" id="builderMusicLoop"></label>
+                    </div>
+                    <button class="btn btn-primary" id="builderMusicBtn">生成音乐建筑</button>
+                </div>
+            </div>
+
+            <!-- 皮肤雕像面板 -->
+            <div class="builder-panel" id="builder-panel-skin">
+                <div class="card">
+                    <h4>皮肤转3D雕像</h4>
+                    <p class="builder-hint">上传64x64皮肤PNG文件，生成3D方块雕像</p>
+                    <input type="file" id="builderSkinFile" accept="image/png">
+                    <label>缩放: <input type="number" id="builderSkinScale" value="1" min="1" max="10"></label>
+                    <button class="btn btn-primary" id="builderSkinBtn">生成雕像</button>
+                </div>
+            </div>
+
+            <!-- 自定义物品面板 -->
+            <div class="builder-panel" id="builder-panel-item">
+                <div class="card">
+                    <h4>自定义物品生成</h4>
+                    <div class="builder-item-form">
+                        <label>物品ID: <input type="text" id="builderItemId" value="diamond_sword" placeholder="如: diamond_sword"></label>
+                        <label>自定义名称: <input type="text" id="builderItemName" placeholder="如: §6我的剑"></label>
+                        <label>附魔: <input type="text" id="builderItemEnchant" placeholder="如: sharpness:5,unbreaking:3"></label>
+                        <label>死亡不掉落: <input type="checkbox" id="builderItemKeep"></label>
+                        <label>不可破坏: <input type="checkbox" id="builderItemUnbreakable"></label>
+                    </div>
+                    <button class="btn btn-primary" id="builderItemBtn">生成命令</button>
+                </div>
+                <div class="card builder-result" id="builderItemResult" style="display:none;">
+                    <h4>生成的命令</h4>
+                    <textarea id="builderItemCommand" readonly style="width:100%;min-height:100px;font-family:monospace;"></textarea>
+                    <button class="btn btn-info" id="builderItemCopyBtn">复制命令</button>
+                </div>
+            </div>
+
+            <!-- 命令链工具面板 -->
+            <div class="builder-panel" id="builder-panel-cmdchain">
+                <div class="card">
+                    <h4>命令方块链扫描</h4>
+                    <p class="builder-hint">上传 mcstructure 文件，自动扫描其中所有命令方块链</p>
+                    <input type="file" id="builderCmdChainFile" accept=".mcstructure,.schematic,.nbt,.schem">
+                    <button class="btn btn-primary mt-2" id="builderCmdChainScanBtn">扫描命令链</button>
+                </div>
+                <div class="card builder-result" id="builderCmdChainResult" style="display:none;">
+                    <h4>扫描结果</h4>
+                    <div id="builderCmdChainInfo"></div>
+                    <div id="builderCmdChainList"></div>
+                </div>
+                <div class="card mt-2">
+                    <h4>MCF 格式互转</h4>
+                    <p class="builder-hint">将命令链导出为 MCF 格式，或将 MCF 文件转换为 mcstructure</p>
+                    <label>选择命令链:
+                        <select id="builderMcfChainSelect"><option value="0">第 1 条</option></select>
+                    </label>
+                    <button class="btn btn-info" id="builderExportMcfBtn">导出为 MCF</button>
+                    <hr style="margin:12px 0;border-color:var(--border-muted);">
+                    <p class="builder-hint">MCF 转 mcstructure</p>
+                    <input type="file" id="builderMcfFile" accept=".mcf,.txt">
+                    <button class="btn btn-primary mt-2" id="builderMcfToMcBtn">转换为 mcstructure</button>
+                </div>
+            </div>
+        </section>
+        <section class="view" id="view-tutorial">
+            <div class="page-header">
+                <div>
+                    <div class="page-title"><i class="fas fa-book-open"></i> 使用教程</div>
+                    <div class="page-subtitle">快速了解 CrystalGate 的各项功能</div>
+                </div>
+            </div>
+
+            <!-- 板块1: 快速入门 -->
+            <div class="card tutorial-card">
+                <div class="tutorial-card-header" data-tutorial-toggle>
+                    <div class="card-title"><i class="fas fa-rocket"></i> 快速入门</div>
+                    <i class="fas fa-chevron-down tutorial-chevron"></i>
+                </div>
+                <div class="tutorial-card-body">
+                    <div class="tutorial-item">
+                        <div class="tutorial-item-title"><i class="fas fa-circle tutorial-dot"></i> 什么是 CrystalGate</div>
+                        <p class="tutorial-text">CrystalGate 是一个在线脚本运行与机器人管理平台。支持上传多种语言的脚本并实时查看运行输出，同时提供面板与机器人管理能力，方便你在手机上完成日常运维与自动化任务。</p>
+                    </div>
+                    <div class="tutorial-item">
+                        <div class="tutorial-item-title"><i class="fas fa-circle tutorial-dot"></i> 如何注册和登录</div>
+                        <p class="tutorial-text">打开应用后进入登录页，点击「注册」填写用户名与密码即可完成注册；已有账号直接输入用户名、密码登录即可进入控制台。</p>
+                    </div>
+                    <div class="tutorial-item">
+                        <div class="tutorial-item-title"><i class="fas fa-circle tutorial-dot"></i> 如何创建面板</div>
+                        <p class="tutorial-text">登录后进入「面板」页面，点击「创建面板」按钮，填写面板名称等信息提交后即可创建属于自己的面板。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 板块2: 面板管理 -->
+            <div class="card tutorial-card">
+                <div class="tutorial-card-header" data-tutorial-toggle>
+                    <div class="card-title"><i class="fas fa-th-large"></i> 面板管理</div>
+                    <i class="fas fa-chevron-down tutorial-chevron"></i>
+                </div>
+                <div class="tutorial-card-body">
+                    <div class="tutorial-item">
+                        <div class="tutorial-item-title"><i class="fas fa-circle tutorial-dot"></i> 如何创建机器人</div>
+                        <p class="tutorial-text">进入面板详情页，点击「创建机器人」，选择账号来源并填写相关信息，提交后即可在面板下创建机器人。</p>
+                    </div>
+                    <div class="tutorial-item">
+                        <div class="tutorial-item-title"><i class="fas fa-circle tutorial-dot"></i> PE / PC 平台选择的区别</div>
+                        <p class="tutorial-text">PE 为口袋版（移动端）平台，PC 为电脑端平台。请根据你实际使用的游戏客户端选择对应平台，平台不匹配可能导致启动失败。</p>
+                    </div>
+                    <div class="tutorial-item">
+                        <div class="tutorial-item-title"><i class="fas fa-circle tutorial-dot"></i> 如何启动机器人</div>
+                        <p class="tutorial-text">在面板详情页点击「启动」按钮即可启动机器人，启动后可在控制台查看实时日志输出，了解运行状态。</p>
+                    </div>
+                    <div class="tutorial-item">
+                        <div class="tutorial-item-title"><i class="fas fa-circle tutorial-dot"></i> 常见错误码说明</div>
+                        <p class="tutorial-text"><strong>code=32</strong>：通常表示登录态失效或需要重新验证。请到「账号管理」中重新添加或刷新该账号后再尝试启动。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 板块3: 运行器使用 -->
+            <div class="card tutorial-card">
+                <div class="tutorial-card-header" data-tutorial-toggle>
+                    <div class="card-title"><i class="fas fa-terminal"></i> 运行器使用</div>
+                    <i class="fas fa-chevron-down tutorial-chevron"></i>
+                </div>
+                <div class="tutorial-card-body">
+                    <div class="tutorial-item">
+                        <div class="tutorial-item-title"><i class="fas fa-circle tutorial-dot"></i> 运行器是什么</div>
+                        <p class="tutorial-text">运行器是一个在线脚本执行环境，可上传脚本文件并执行命令，通过 WebSocket 实时返回 stdout / stderr 输出，方便在手机上直接运行和调试脚本。</p>
+                    </div>
+                    <div class="tutorial-item">
+                        <div class="tutorial-item-title"><i class="fas fa-circle tutorial-dot"></i> 支持的文件类型</div>
+                        <div class="tutorial-tags">
+                            <span class="tutorial-tag">.py Python</span>
+                            <span class="tutorial-tag">.go Go</span>
+                            <span class="tutorial-tag">.java Java</span>
+                            <span class="tutorial-tag">.js Node.js</span>
+                            <span class="tutorial-tag">.sh Shell</span>
+                            <span class="tutorial-tag">.exe 可执行文件</span>
+                            <span class="tutorial-tag">.ts TypeScript</span>
+                            <span class="tutorial-tag">.rb Ruby</span>
+                            <span class="tutorial-tag">.pl Perl</span>
+                            <span class="tutorial-tag">.php PHP</span>
+                            <span class="tutorial-tag">.rs Rust</span>
+                            <span class="tutorial-tag">.c / .cpp C/C++</span>
+                        </div>
+                    </div>
+                    <div class="tutorial-item">
+                        <div class="tutorial-item-title"><i class="fas fa-circle tutorial-dot"></i> 如何上传文件</div>
+                        <p class="tutorial-text">在「文件管理」区域点击「上传文件」按钮，选择本地脚本即可上传。上传成功后会弹出提示显示文件名，文件会出现在列表中。</p>
+                    </div>
+                    <div class="tutorial-item">
+                        <div class="tutorial-item-title"><i class="fas fa-circle tutorial-dot"></i> 如何运行文件</div>
+                        <p class="tutorial-text">点击文件名可自动根据扩展名填充命令到输入框；也可点击文件操作中的「运行」按钮直接执行；或在命令框中手动输入命令后点击「执行」。</p>
+                    </div>
+                    <div class="tutorial-item">
+                        <div class="tutorial-item-title"><i class="fas fa-circle tutorial-dot"></i> 如何使用 WebSocket 实时输出</div>
+                        <p class="tutorial-text">执行命令后系统会自动通过 WebSocket 推送 stdout / stderr，实时显示在输出区。若 WebSocket 不可用，会自动回退到 HTTP 模式获取完整输出。</p>
+                    </div>
+                    <div class="tutorial-item">
+                        <div class="tutorial-item-title"><i class="fas fa-circle tutorial-dot"></i> 文件管理操作</div>
+                        <p class="tutorial-text">每个文件支持以下操作：运行、下载、重命名、压缩、删除。点击文件条目上对应的按钮即可执行相应操作。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 板块4: 账号管理 -->
+            <div class="card tutorial-card">
+                <div class="tutorial-card-header" data-tutorial-toggle>
+                    <div class="card-title"><i class="fas fa-user-cog"></i> 账号管理</div>
+                    <i class="fas fa-chevron-down tutorial-chevron"></i>
+                </div>
+                <div class="tutorial-card-body">
+                    <div class="tutorial-item">
+                        <div class="tutorial-item-title"><i class="fas fa-circle tutorial-dot"></i> 如何添加 4399 账号</div>
+                        <p class="tutorial-text">在账号管理中点击「添加账号」，填写 4399 账号信息并完成验证后即可添加。添加成功的账号可用于创建和启动机器人。</p>
+                    </div>
+                    <div class="tutorial-item">
+                        <div class="tutorial-item-title"><i class="fas fa-circle tutorial-dot"></i> sauth_json 自动刷新机制</div>
+                        <p class="tutorial-text">系统会自动维护 sauth_json 登录凭证，在临近过期时自动刷新，无需手动干预。若自动刷新失败，系统会提示你重新登录该账号以恢复凭证有效性。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             View: Admin - Orders (订单管理)
+             ================================================================== -->
+        <section class="view" id="view-admin-orders">
+            <div class="page-header">
+                <div>
+                    <div class="page-title"><i class="fas fa-receipt"></i> 订单管理</div>
+                    <div class="page-subtitle">查看和搜索订单</div>
+                </div>
+                <div class="page-actions">
+                    <input type="text" class="form-input" id="orderSearchInput" placeholder="搜索订单号或用户名" style="width:200px;display:inline-block;">
+                    <button class="btn btn-primary btn-sm" id="searchOrderBtn"><i class="fas fa-search"></i> 搜索</button>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-body" style="padding:0;">
+                    <div id="adminOrdersList" style="max-height:600px;overflow-y:auto;"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             View: Admin - Review (文件审核)
+             ================================================================== -->
+        <section class="view" id="view-admin-review">
+            <div class="page-header">
+                <div>
+                    <div class="page-title"><i class="fas fa-check-circle"></i> 文件审核</div>
+                    <div class="page-subtitle">审核用户上传的文件</div>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-secondary btn-sm" id="refreshReviewBtn"><i class="fas fa-sync-alt"></i> 刷新</button>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-body"><div id="reviewFilesList"></div></div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             View: Admin - Balance (用户余额管理)
+             ================================================================== -->
+        <section class="view" id="view-admin-balance">
+            <div class="page-header">
+                <div>
+                    <div class="page-title"><i class="fas fa-coins"></i> 用户余额管理</div>
+                    <div class="page-subtitle">管理用户余额</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-body">
+                    <div class="form-group" style="margin-bottom:16px;">
+                        <label class="form-label">用户名</label>
+                        <input type="text" class="form-input" id="balanceUsername" placeholder="输入用户名" style="display:inline-block;width:200px;">
+                        <label class="form-label" style="margin-left:12px;">余额</label>
+                        <input type="number" class="form-input" id="balanceAmount" placeholder="0.00" style="display:inline-block;width:120px;">
+                        <button class="btn btn-primary btn-sm" id="setBalanceBtn" style="margin-left:8px;"><i class="fas fa-check"></i> 设置余额</button>
+                    </div>
+                    <div id="usersBalanceList" style="max-height:500px;overflow-y:auto;"></div>
+                </div>
+            </div>
+        </section>
+
+    <!-- 查IP端口视图 -->
+        <div class="view" id="view-ip-query">
+            <div class="view-header">
+                <h1>查IP端口</h1>
+                <p class="view-subtitle">查询租赁服/联机大厅/本地联机/山头的IP和端口</p>
+            </div>
+            <div class="card">
+                <div style="display:flex;flex-direction:column;gap:12px;align-items:stretch">
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                        <select id="ipQueryType" style="padding:10px 12px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#e6edf3;outline:none;appearance:none;-webkit-appearance:none;" onfocus="this.style.borderColor='#58a6ff'" onblur="this.style.borderColor='#30363d'">
+                            <option value="rental" style="background:#0d1117;color:#e6edf3;">租赁服</option>
+                            <option value="lobby" style="background:#0d1117;color:#e6edf3;">联机大厅</option>
+                            <option value="local" style="background:#0d1117;color:#e6edf3;">本地联机</option>
+                            <option value="mountain" style="background:#0d1117;color:#e6edf3;">山头</option>
+                            <option value="player" style="background:#0d1117;color:#e6edf3;">玩家</option>
+                        </select>
+                        <input type="text" id="ipQueryInput" placeholder="输入服务器号/房间号" style="flex:1;min-width:180px;padding:10px 12px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#e6edf3;outline:none;" onfocus="this.style.borderColor='#58a6ff'" onblur="this.style.borderColor='#30363d'">
+                    </div>
+                    <div style="display:flex;justify-content:center">
+                        <button class="btn btn-primary" style="min-width:160px;" onclick="window.queryIpPort && window.queryIpPort()">查询</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card hidden" id="ipQueryResult">
+                <div style="font-size:14px;margin-bottom:8px">查询结果:</div>
+                <div id="ipQueryResultBody" style="font-family:monospace;color:var(--color-primary)"></div>
+            </div>
+        </div>
+<!-- 注册游戏账号视图 -->
+        <div class="view" id="view-bot-create">
+            <div class="view-header">
+                <h1><i class="fas fa-user-plus" style="color:var(--color-primary);"></i> 注册游戏账号</h1>
+                <p class="view-subtitle">自动注册独立网易账号 · 短信验证 · 全自动实名入库</p>
+            </div>
+            <div class="card">
+                <div style="display:flex;flex-direction:column;gap:16px;max-width:640px;margin:0 auto;padding:8px 0;">
+                    <!-- 步骤指示条 -->
+                    <div style="display:flex;gap:0;margin-bottom:4px;">
+                        <div class="bc-step-ind" id="bcInd1"><div class="bc-step-num">1</div><div class="bc-step-t">启动注册</div></div>
+                        <div class="bc-step-line" id="bcLine1"></div>
+                        <div class="bc-step-ind" id="bcInd2"><div class="bc-step-num">2</div><div class="bc-step-t">发送短信</div></div>
+                        <div class="bc-step-line" id="bcLine2"></div>
+                        <div class="bc-step-ind" id="bcInd3"><div class="bc-step-num">3</div><div class="bc-step-t">实名入库</div></div>
+                    </div>
+
+                    <div class="bot-create-step" id="bcStep1">
+                        <div class="bc-title"><i class="fas fa-play-circle"></i> 第1步 · 启动注册</div>
+                        <div class="bc-desc">系统将使用内置设备信息向网易申请一个全新账号注册任务，全程自动，无需你提供任何账号密码。</div>
+                        <div class="bc-time-hint"><i class="fas fa-clock"></i> 注册窗口限时 <b style="color:#3fb950;">5 分钟</b>，超时自动关闭。请在窗口内完成短信发送。</div>
+                        <div style="display:flex;justify-content:center;align-items:center;gap:10px;margin-top:18px;flex-wrap:wrap;">
+                            <button class="btn btn-primary bc-btn-same" id="bcStartBtn" onclick="startBotRegister()">开始注册</button>
+                            <button class="btn btn-secondary bc-btn-same hidden" id="bcCancelBtn" onclick="cancelBotRegister()">关闭</button>
+                        </div>
+                        <div id="bcCountdown" style="font-size:13px;color:var(--color-warning);margin-top:10px;font-family:monospace;text-align:center;"></div>
+                    </div>
+
+                    <div class="bot-create-step hidden" id="bcStep2">
+                        <div class="bc-title"><i class="fas fa-sms"></i> 第2步 · 发送验证短信</div>
+                        <div id="bcCountdown2" style="display:none;font-size:13px;color:var(--color-warning);margin:0 0 10px 0;font-family:monospace;text-align:center;background:#161b22;border:1px solid #30363d;border-radius:6px;padding:8px;"></div>
+                        <div style="background:#0d1117;border:1px solid #30363d;padding:16px;border-radius:8px;">
+                            <div style="font-size:14px;color:#7d8590;margin-bottom:10px;">请用你的手机发送以下验证码到指定号码：</div>
+                            <div class="bc-sms-box">
+                                <div class="bc-sms-item">
+                                    <div class="bc-sms-k">验证码内容 <span style="font-size:11px;color:#484f58;">(点击复制)</span></div>
+                                    <div class="bc-sms-v mono" id="bcSmsContent" style="color:#3fb950;font-size:22px;letter-spacing:3px;cursor:pointer;user-select:all;" onclick="copyBcSmsContent()">-</div>
+                                </div>
+                                <div class="bc-sms-item">
+                                    <div class="bc-sms-k">发送到号码 <span style="font-size:11px;color:#484f58;">(点击复制)</span></div>
+                                    <div class="bc-sms-v mono" id="bcSmsNumber" style="color:#58a6ff;font-size:18px;cursor:pointer;user-select:all;" onclick="copyBcSmsNumber()">-</div>
+                                </div>
+                            </div>
+                            <div style="font-size:12px;color:#484f58;margin-top:10px;line-height:1.7;">
+                                <i class="fas fa-info-circle"></i> 打开手机短信应用 → 新建短信 → 收件人填上方号码 → 内容只填上方验证码 → 发送。
+                                发送后点下方按钮，系统会自动检测短信是否送达，成功后自动入库，全程约 1-2 分钟。
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap;">
+                            <button class="btn btn-success bc-btn-same" id="bcCheckBtn" onclick="checkBotRegister()">已发送</button>
+                            <button class="btn btn-secondary bc-btn-same" id="bcCancelBtn2" onclick="cancelBotRegister()">关闭</button>
+                        </div>
+                    </div>
+
+                    <div class="bot-create-step hidden" id="bcStep3">
+                        <div class="bc-title"><i class="fas fa-shield-alt"></i> 第3步 · 自动实名 + 入库</div>
+                        <div id="bcStatus" style="font-size:14px;color:var(--text-secondary);margin-top:8px;"><i class="fas fa-spinner fa-spin"></i> 处理中...</div>
+                    </div>
+                    <div id="bcResult" style="font-weight:700;font-size:16px"></div>
+                </div>
+            </div>
+            <!-- 管理员: 创建日志 -->
+            <div class="card hidden" id="bcAdminLogs">
+                <h3 style="margin-bottom:12px"><i class="fas fa-list-alt"></i> 创建日志 (管理员)</h3>
+                <div id="bcLogsList"></div>
+            </div>
+        </div>
+</main>
+</div>
+
+<!-- ==========================================================================
+     Modals
+     ========================================================================== -->
+
+<!-- Create Panel Modal -->
+<div class="modal-overlay" id="modalCreatePanel">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title"><i class="fas fa-plus-circle"></i> 创建面板</div>
+            <div class="modal-close" data-modal-close><i class="fas fa-times"></i></div>
+        </div>
+        <div class="modal-body">
+            <form id="createPanelForm">
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="form-label" for="createPanelName">
+                        <i class="fas fa-tag"></i> 面板名称
+                    </label>
+                    <input type="text" class="form-input" id="createPanelName"
+                           placeholder="输入面板名称" required maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="createPanelServerCode">
+                        <i class="fas fa-server"></i> 服务器/房间编号
+                    </label>
+                    <input type="text" class="form-input mono" id="createPanelServerCode"
+                           placeholder="输入租赁服编号, 如 47126223" required maxlength="30">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="createPanelCardKey">
+                        <i class="fas fa-key"></i> 面板卡密
+                    </label>
+                    <input type="text" class="form-input mono" id="createPanelCardKey"
+                           placeholder="输入面板卡密, 格式如 MCBE-CG5Y-ER8V" required>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" data-modal-close>取消</button>
+            <button class="btn btn-primary" id="createPanelSubmit" type="button">
+                <i class="fas fa-check"></i> 创建
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Create Card Key Modal -->
+<div class="modal-overlay" id="modalCreateCard">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <div class="modal-title"><i class="fas fa-key"></i> 生成卡密</div>
+            <div class="modal-close" data-modal-close><i class="fas fa-times"></i></div>
+        </div>
+        <div class="modal-body">
+            <form id="createCardForm">
+                <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div class="form-group">
+                        <label class="form-label" for="cardKeyType">
+                            <i class="fas fa-tag"></i> 卡密类型
+                        </label>
+                        <select class="form-input filter-select" id="cardKeyType" style="width:100%;" required>
+                            <option value="register">注册卡密</option>
+                            <option value="panel">面板卡密</option>
+                            <option value="renewal">续期卡密</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="cardKeyDuration">
+                            <i class="fas fa-clock"></i> 有效时长
+                        </label>
+                        <select class="form-input filter-select" id="cardKeyDuration" style="width:100%;" required>
+                            <option value="1h">1 小时</option>
+                            <option value="6h">6 小时</option>
+                            <option value="12h">12 小时</option>
+                            <option value="1d">1 天</option>
+                            <option value="3d">3 天</option>
+                            <option value="7d">7 天</option>
+                            <option value="14d">14 天</option>
+                            <option value="30d">30 天</option>
+                            <option value="90d">90 天</option>
+                            <option value="180d">180 天</option>
+                            <option value="365d">365 天</option>
+                            <option value="permanent" selected>永久</option>
+                        </select>
+                        <div class="form-hint" style="font-size:11px;color:var(--text-tertiary);margin-top:4px;">卡密从使用那一刻起有效这段时间（注册卡密=注册后账号可用时长）</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="cardKeyCount">
+                            <i class="fas fa-layer-group"></i> 生成数量 (1-100)
+                        </label>
+                        <input type="number" class="form-input" id="cardKeyCount"
+                               value="1" min="1" max="100" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="cardKeyMaxUses">
+                            <i class="fas fa-sync-alt"></i> 每张卡可用次数 (0 = 不限次数)
+                        </label>
+                        <input type="number" class="form-input" id="cardKeyMaxUses"
+                               value="1" min="0" max="10000" placeholder="填写数字, 0=无限" style="width:140px;">
+                        <div class="form-hint" style="font-size:11px;color:var(--text-tertiary);margin-top:4px;">完全自定义: 想几次就填几, 填 0 表示无限次</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="cardKeyExpires">
+                            <i class="fas fa-calendar-times"></i> 指定过期时间 (可选, 须晚于现在)
+                        </label>
+                        <input type="datetime-local" class="form-input" id="cardKeyExpires"
+                               onblur="validateCardExpiry(this)">
+                        <div class="form-hint" style="font-size:11px;color:var(--text-tertiary);margin-top:4px;">留空则按上面的有效时长计算; 选过去的时间会被拒绝</div>
+                    </div>
+                </div>
+            </form>
+            <div id="cardKeyResults" style="display:none;margin-top:20px;">
+                <div class="form-label" style="margin-bottom:8px;">
+                    <i class="fas fa-check-circle" style="color:var(--color-success);"></i>
+                    生成成功 (点击卡密复制)
+                </div>
+                <div id="cardKeyResultsList" style="display:flex;flex-direction:column;gap:8px;"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" data-modal-close>关闭</button>
+            <button class="btn btn-primary" id="createCardSubmit" type="button">
+                <i class="fas fa-magic"></i> 生成卡密
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Create User Modal -->
+<div class="modal-overlay" id="modalCreateUser">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title"><i class="fas fa-user-plus"></i> 创建用户</div>
+            <div class="modal-close" data-modal-close><i class="fas fa-times"></i></div>
+        </div>
+        <div class="modal-body">
+            <form id="createUserForm">
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="form-label" for="newUsername">
+                        <i class="fas fa-user"></i> 用户名
+                    </label>
+                    <input type="text" class="form-input" id="newUsername"
+                           placeholder="3-20 位字符" required minlength="3" maxlength="20">
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="form-label" for="newPassword">
+                        <i class="fas fa-lock"></i> 密码
+                    </label>
+                    <input type="password" class="form-input" id="newPassword"
+                           placeholder="至少 6 位" required minlength="6">
+                </div>
+                <div class="form-row" style="margin-bottom:0;">
+                    <div class="form-group">
+                        <label class="form-label" for="newUserRole">
+                            <i class="fas fa-user-tag"></i> 角色
+                        </label>
+                        <select class="form-input filter-select" id="newUserRole" style="width:100%;" required>
+                            <option value="user">普通用户</option>
+                            <option value="admin">管理员</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="newUserDuration">
+                            <i class="fas fa-hourglass-half"></i> 有效期 (天)
+                        </label>
+                        <input type="number" class="form-input" id="newUserDuration"
+                               placeholder="留空=永久" min="1">
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" data-modal-close>取消</button>
+            <button class="btn btn-primary" id="createUserSubmit" type="button">
+                <i class="fas fa-check"></i> 创建
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Renew Panel Modal -->
+<div class="modal-overlay" id="modalRenewPanel">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title"><i class="fas fa-sync-alt"></i> 续费面板</div>
+            <div class="modal-close" data-modal-close><i class="fas fa-times"></i></div>
+        </div>
+        <div class="modal-body">
+            <form id="renewPanelForm">
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="form-label">面板名称</label>
+                    <input type="text" class="form-input" id="renewPanelName" disabled>
+                    <input type="hidden" id="renewPanelId">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="renewCardKey">
+                        <i class="fas fa-key"></i> 续期卡密
+                    </label>
+                    <input type="text" class="form-input mono" id="renewCardKey"
+                           placeholder="输入续期卡密" required>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" data-modal-close>取消</button>
+            <button class="btn btn-primary" id="renewPanelSubmit" type="button">
+                <i class="fas fa-check"></i> 确认续费
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="modalConfirm">
+    <div class="modal" style="max-width:400px;">
+        <div class="modal-header">
+            <div class="modal-title" id="confirmTitle"><i class="fas fa-exclamation-triangle"></i> 确认操作</div>
+            <div class="modal-close" data-modal-close><i class="fas fa-times"></i></div>
+        </div>
+        <div class="modal-body">
+            <p id="confirmMessage" style="font-size:14px;line-height:1.6;"></p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" data-modal-close>取消</button>
+            <button class="btn btn-danger" id="confirmOk">
+                <i class="fas fa-check"></i> 确认
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal-overlay" id="modalChangePassword">
+    <div class="modal" style="max-width:420px;">
+        <div class="modal-header">
+            <div class="modal-title"><i class="fas fa-key"></i> 修改密码</div>
+            <div class="modal-close" data-modal-close><i class="fas fa-times"></i></div>
+        </div>
+        <div class="modal-body">
+            <div class="form-group" style="margin-bottom:16px;">
+                <label class="form-label">当前密码</label>
+                <input type="password" class="form-input" id="changePwdOld" placeholder="请手动输入当前密码" autocomplete="off" data-lpignore="true">
+            </div>
+            <div class="form-group" style="margin-bottom:16px;">
+                <label class="form-label">新密码</label>
+                <input type="password" class="form-input" id="changePwdNew" placeholder="输入新密码 (至少6位)" autocomplete="new-password">
+            </div>
+            <div class="form-group">
+                <label class="form-label">确认新密码</label>
+                <input type="password" class="form-input" id="changePwdConfirm" placeholder="再次输入新密码" autocomplete="new-password">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" data-modal-close>取消</button>
+            <button class="btn btn-primary" type="button" id="changePwdSubmit">
+                <i class="fas fa-check"></i> 确认修改
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Create Announcement Modal -->
+<div class="modal-overlay" id="modalCreateAnnouncement">
+    <div class="modal" style="max-width:560px;">
+        <div class="modal-header">
+            <div class="modal-title"><i class="fas fa-bullhorn"></i> 发布公告</div>
+            <div class="modal-close" data-modal-close><i class="fas fa-times"></i></div>
+        </div>
+        <div class="modal-body">
+            <form id="createAnnouncementForm">
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="form-label" for="annTitle">
+                        <i class="fas fa-heading"></i> 标题
+                    </label>
+                    <input type="text" class="form-input" id="annTitle"
+                           placeholder="输入公告标题" required maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="annContent">
+                        <i class="fas fa-align-left"></i> 内容
+                    </label>
+                    <textarea class="form-input" id="annContent" rows="6"
+                              placeholder="输入公告内容..." required maxlength="5000"
+                              style="resize:vertical;min-height:120px;"></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" data-modal-close>取消</button>
+            <button class="btn btn-primary" id="createAnnouncementSubmit" type="button">
+                <i class="fas fa-check"></i> 发布
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MPay 手机号登录 Modal -->
+<div class="modal-overlay" id="modalMpayLogin">
+    <div class="modal" style="max-width:460px;">
+        <div class="modal-header">
+            <div class="modal-title"><i class="fas fa-mobile-alt"></i> MPay 手机号登录</div>
+            <div class="modal-close" data-modal-close><i class="fas fa-times"></i></div>
+        </div>
+        <div class="modal-body">
+            <!-- 步骤指示器 -->
+            <div style="display:flex;gap:6px;margin-bottom:16px;">
+                <div class="mpay-step" id="mpayStep1">1. 设备</div>
+                <div class="mpay-step" id="mpayStep2">2. 手机号</div>
+                <div class="mpay-step" id="mpayStep3">3. 验证</div>
+            </div>
+
+            <!-- 步骤1: 设备注册 (自动) -->
+            <div id="mpayDeviceLoading" style="text-align:center;padding:20px 0;">
+                <i class="fas fa-spinner fa-spin" style="font-size:24px;color:var(--color-primary);"></i>
+                <div style="font-size:13px;color:var(--text-secondary);margin-top:12px;">正在注册设备...</div>
+                <div style="font-size:11px;color:var(--text-tertiary);margin-top:4px;">这是自动步骤, 无需操作</div>
+            </div>
+
+            <!-- 步骤2: 手机号输入 -->
+            <div id="mpayPhoneStep" style="display:none;">
+                <div style="padding:12px;background:var(--bg-input);border-radius:var(--radius-md);margin-bottom:16px;">
+                    <div style="font-size:12px;color:var(--text-secondary);">
+                        <i class="fas fa-check-circle" style="color:var(--color-success);"></i> 设备注册成功
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="mpayPhone">
+                        <i class="fas fa-phone"></i> 手机号
+                    </label>
+                    <input type="tel" class="form-input" id="mpayPhone" maxlength="11"
+                           placeholder="请输入 11 位手机号" inputmode="numeric"
+                           style="font-size:15px;letter-spacing:1px;">
+                </div>
+            </div>
+
+            <!-- 步骤3a: 验证码输入 (normal 模式) -->
+            <div id="mpayCodeStep" style="display:none;">
+                <div style="padding:12px;background:var(--bg-input);border-radius:var(--radius-md);margin-bottom:16px;">
+                    <div style="font-size:12px;color:var(--text-secondary);">
+                        <i class="fas fa-sms" style="color:var(--color-primary);"></i>
+                        验证码已发送至 <strong id="mpayPhoneDisplay" style="color:var(--text-primary);"></strong>, 请查收短信
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="mpayCode">
+                        <i class="fas fa-key"></i> 短信验证码
+                    </label>
+                    <input type="text" class="form-input" id="mpayCode" maxlength="8"
+                           placeholder="输入收到的短信验证码" inputmode="numeric"
+                           style="font-size:15px;letter-spacing:2px;">
+                </div>
+            </div>
+
+            <!-- 步骤3b: 上行短信提示 (upstream 模式) -->
+            <div id="mpayUpstreamStep" style="display:none;">
+                <div style="padding:12px;background:rgba(210,153,34,0.08);border:1px solid var(--color-warning);border-radius:var(--radius-md);margin-bottom:16px;">
+                    <div style="font-size:13px;color:var(--color-warning);font-weight:600;margin-bottom:6px;">
+                        <i class="fas fa-exclamation-triangle"></i> 上行短信验证
+                    </div>
+                    <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;">
+                        请用手机 <strong id="mpayUpstreamPhone" style="color:var(--text-primary);"></strong>
+                        编辑短信, 内容为 <strong id="mpayUpstreamContent" style="color:var(--color-primary);"></strong>,
+                        发送到 <strong id="mpayUpstreamNumber" style="color:var(--color-primary);"></strong>
+                    </div>
+                    <div id="mpayUpstreamTips" style="font-size:11px;color:var(--text-tertiary);margin-top:6px;"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="mpayUpContent">
+                        <i class="fas fa-check"></i> 发送完成后, 在此确认 (可修改上行内容)
+                    </label>
+                    <input type="text" class="form-input" id="mpayUpContent"
+                           placeholder="通常为: 手机登录"
+                           style="font-size:13px;">
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" data-modal-close>取消</button>
+            <button class="btn btn-primary" id="mpaySendSmsBtn" type="button" style="display:none;">
+                <i class="fas fa-paper-plane"></i> 发送验证码
+            </button>
+            <button class="btn btn-primary" id="mpayVerifyBtn" type="button" style="display:none;">
+                <i class="fas fa-check"></i> 确认登录
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ==========================================================================
+     Toast Container
+     ========================================================================== -->
+<div id="toastContainer"></div>
+
+<!-- ==========================================================================
+     Scripts
+     ========================================================================== -->
+<script src="/js/creative-effects.js?v=1.4"></script>
+<script src="/js/v2app.js?v=1.4"></script>
+</body>
+</html>
