@@ -2652,7 +2652,11 @@
                 appendTerminal("  终端输入 /say 消息 → 机器人说话", "system");
                 appendTerminal("  终端输入 //命令 → 机器人执行命令", "system");
                 showStartMenu();
+            } else if (cmdTrim === "4") {
+                // 4=取消菜单, 进入正常命令模式
+                appendTerminal("菜单已取消, 可直接输入命令 (如 /say 消息)", "info");
             } else {
+                appendTerminal("❌ 无此选项: " + cmdTrim + " (输入 1/2/3, 或输入其他内容退出菜单)", "warn");
                 showStartMenu();
             }
             return;
@@ -2883,7 +2887,7 @@
 
     /** 真正执行启动 (菜单选1后调用) */
     async function doStartBot() {
-        startBot();
+        doRealStartBot();
     }
 
     async function startBot() {
@@ -2896,7 +2900,14 @@
         // 启动菜单: 先弹菜单 (启动/换皮肤/帮助), 选1才真正启动
         showStartMenu();
         return;
+    }
 
+    async function doRealStartBot() {
+        if (isPanelLocked()) { toastWarn("面板已锁定，无法操作"); return; }
+        if (!state.currentBotId) {
+            toastWarn("请先创建面板机器人");
+            return;
+        }
         const startBtn = $("btnStartBot");
         try {
             startBtn.disabled = true;
