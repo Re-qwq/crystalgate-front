@@ -2016,6 +2016,10 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
                     <i class="fas fa-map-marker-alt nav-icon"></i>
                     <span class="nav-label">查询信息</span>
                 </div>
+                <div class="nav-item" data-view="ai" id="navAi">
+                    <i class="fas fa-robot nav-icon"></i>
+                    <span class="nav-label">晶灵智能</span>
+                </div>
                 <div class="nav-item" data-view="bot-create" id="navBotCreate">
                     <i class="fas fa-user-plus nav-icon"></i>
                     <span class="nav-label">注册游戏账号</span>
@@ -3425,6 +3429,35 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
                 </div>
             </div>
         </section>
+
+    <!-- 晶灵智能视图 -->
+    <div class="view" id="view-ai">
+        <div class="ai-container" style="display:flex;flex-direction:column;height:calc(100vh - 140px);max-width:900px;margin:0 auto;background:var(--bg-card);border:1px solid var(--border-default);border-radius:16px;overflow:hidden;">
+            <div class="ai-header" style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--border-default);">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#58a6ff,#a371f7);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;">🤖</div>
+                    <div>
+                        <div style="font-weight:600;font-size:15px;">晶灵智能</div>
+                        <div style="font-size:11px;color:var(--text-tertiary);">CrystalGate 面板助手 · 在线</div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <span id="aiCredits" style="font-size:12px;color:var(--text-secondary);">积分: --</span>
+                    <button class="btn btn-secondary btn-sm" id="btnAiCheckin">签到 +20</button>
+                    <button class="btn btn-ghost btn-sm" id="btnAiClear">清空</button>
+                </div>
+            </div>
+            <div id="aiMessages" style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px;background:#0d1117;"></div>
+            <div class="ai-input-area" style="padding:14px 20px;border-top:1px solid var(--border-default);background:var(--bg-card);">
+                <input type="file" id="aiFileInput" style="display:none;" accept=".txt,.md,.py,.json,.log,.bdx,.mcworld,.mcstructure,.schematic,.schem">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button class="btn btn-ghost btn-sm" id="btnAiAttach" title="上传文件 (≤10MB)"><i class="fas fa-paperclip"></i></button>
+                    <input type="text" id="aiInput" placeholder="给晶灵发消息..." style="flex:1;background:#0d1117;border:1px solid var(--border-default);border-radius:10px;padding:10px 14px;color:var(--text-primary);font-size:14px;" autocomplete="off">
+                    <button class="btn btn-primary" id="btnAiSend" style="min-width:80px;"><i class="fas fa-paper-plane"></i> 发送</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- 查询信息视图 -->
         <div class="view" id="view-ip-query">

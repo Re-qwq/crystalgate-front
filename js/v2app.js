@@ -239,6 +239,13 @@
         // 发起请求
         let response;
         try {
+            // 超时控制 (AI 长请求)
+            let timeoutCtrl = null;
+            if (options.timeout) {
+                timeoutCtrl = new AbortController();
+                fetchOpts.signal = timeoutCtrl.signal;
+                setTimeout(() => timeoutCtrl && timeoutCtrl.abort(), options.timeout);
+            }
             response = await fetch(url, fetchOpts);
         } catch (err) {
             toastError("网络连接失败，请检查网络");
@@ -7916,3 +7923,151 @@
 })();
 
 
+
+
+/* ======================================================================
+   20. 晶灵智能 (AI 助手)
+   ====================================================================== */
+    const aiHistory = [];
+    let aiGenerating = false;
+
+    async function initAI() {
+        const sendBtn = $("btnAiSend");
+        const input = $("aiInput");
+        const clearBtn = $("btnAiClear");
+        const checkinBtn = $("btnAiCheckin");
+        const attachBtn = $("btnAiAttach");
+        const fileInput = $("aiFileInput");
+        if (!sendBtn || !input) return;
+        sendBtn.addEventListener("click", () => sendAIMessage());
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendAIMessage();
+            }
+        });
+        if (clearBtn) clearBtn.addEventListener("click", () => {
+            aiHistory.length = 0;
+            $("aiMessages").innerHTML = "";
+            appendAIMessage("assistant", "对话已清空, 有什么想问的?");
+        });
+        if (checkinBtn) checkinBtn.addEventListener("click", doAICheckin);
+        if (attachBtn) attachBtn.addEventListener("click", () => fileInput && fileInput.click());
+        if (fileInput) fileInput.addEventListener("change", handleAIFile);
+        // 初始欢迎
+        appendAIMessage("assistant", "你好! 我是晶灵, CrystalGate 面板智能助手。\n可以帮你解答面板功能、游戏问题, 也能帮你写插件。");
+        loadAICredits();
+    }
+
+    function appendAIMessage(role, text) {
+        const box = $("aiMessages");
+        if (!box) return;
+        const div = document.createElement("div");
+        div.style.cssText = role === "user"
+            ? "align-self:flex-end;max-width:75%;background:linear-gradient(135deg,#1f6feb,#388bfd);color:#fff;padding:10px 16px;border-radius:14px 14px 4px 14px;font-size:14px;line-height:1.5;word-break:break-word;"
+            : "align-self:flex-start;max-width:85%;background:#161b22;border:1px solid #30363d;color:#e6edf3;padding:10px 16px;border-radius:14px 14px 14px 4px;font-size:14px;line-height:1.5;word-break:break-word;white-space:pre-wrap;";
+        div.textContent = text;
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+        return div;
+    }
+
+    async function sendAIMessage() {
+        const input = $("aiInput");
+        if (!input) return;
+        const msg = input.value.trim();
+        if (!msg || aiGenerating) return;
+        input.value = "";
+        appendAIMessage("user", msg);
+        aiHistory.push({ role: "user", content: msg });
+        aiGenerating = true;
+        const sendBtn = $("btnAiSend");
+        if (sendBtn) {
+            sendBtn.innerHTML = '<i class="fas fa-stop"></i> 停止';
+            sendBtn.disabled = true;
+        }
+        try {
+            const res = await api("/ai/chat", {
+                method: "POST",
+                body: { message: msg, history: aiHistory.slice(-8) },
+                timeout: 120000,
+            });
+            if (res && res.success) {
+                appendAIMessage("assistant", res.reply || "(空回复)");
+                aiHistory.push({ role: "assistant", content: res.reply || "" });
+            } else {
+                appendAIMessage("assistant", "⚠️ " + ((res && res.message) || "调用失败"));
+            }
+        } catch (e) {
+            appendAIMessage("assistant", "⚠️ 网络错误: " + (e.message || ""));
+        }
+        aiGenerating = false;
+        if (sendBtn) {
+            sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 发送';
+            sendBtn.disabled = false;
+        }
+        loadAICredits();
+    }
+
+    async function loadAICredits() {
+        try {
+            const res = await api("/ai/credits");
+            if (res && res.success) {
+                const el = $("aiCredits");
+                if (el) el.textContent = res.is_admin ? "积分: 无限 (管理员)" : "积分: " + res.credits;
+            }
+        } catch (e) { /* 忽略 */ }
+    }
+
+    async function doAICheckin() {
+        try {
+            const res = await api("/ai/checkin", { method: "POST", body: {} });
+            if (res) {
+                toastSuccess(res.message || "签到完成");
+                loadAICredits();
+            }
+        } catch (e) {
+            toastError("签到失败");
+        }
+    }
+
+    async function handleAIFile(event) {
+        const file = event.target.files[0];
+        event.target.value = "";
+        if (!file) return;
+        if (file.size > 10 * 1024 * 1024) {
+            toastError("文件超过 10MB 限制");
+            return;
+        }
+        toastInfo("正在读取文件: " + file.name);
+        // 只读前 50KB 文本
+        const blob = file.slice(0, 50 * 1024);
+        const text = await blob.text().catch(() => "(二进制文件)");
+        const truncated = text.length >= 50 * 1024 ? "\n...(文件过大, 已截断)" : "";
+        const prompt = "用户上传了文件: " + file.name + "\n内容:\n" + text.slice(0, 8000) + truncated + "\n\n请分析这个文件。";
+        appendAIMessage("user", "📎 " + file.name);
+        aiHistory.push({ role: "user", content: prompt });
+        // 直接调用
+        aiGenerating = true;
+        try {
+            const res = await api("/ai/chat", {
+                method: "POST",
+                body: { message: prompt, history: aiHistory.slice(-8) },
+                timeout: 120000,
+            });
+            if (res && res.success) {
+                appendAIMessage("assistant", res.reply || "(空回复)");
+                aiHistory.push({ role: "assistant", content: res.reply || "" });
+            }
+        } catch (e) {
+            appendAIMessage("assistant", "⚠️ 分析失败");
+        }
+        aiGenerating = false;
+    }
+
+    // AI 初始化钩子: 在 init() 里调用
+    const _origInit2 = init;
+    init = async function() {
+        await _origInit2();
+        try { initAI(); } catch (e) { /* AI 未启用 */ }
+    };
