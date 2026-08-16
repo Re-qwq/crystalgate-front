@@ -166,6 +166,14 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
     transition: opacity 0.6s ease, visibility 0.6s ease;
     overflow: hidden;
 }
+.boot-logo {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    line-height: 1.25;
+    margin: 0 0 16px 0;
+    letter-spacing: 0;
+    white-space: pre;
+}
 #bootScreen.fade-out { opacity: 0; visibility: hidden; pointer-events: none; }
 @keyframes bootGlow {
     from { filter: brightness(0.85); }
@@ -1788,6 +1796,11 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
      Boot Screen
      ========================================================================== -->
 <div class="screen" id="bootScreen">
+        <pre class="boot-logo"><span class="boot-gradient-1"><span class="boot-char">   ___      _            _  ___      _   </span></span>
+<span class="boot-gradient-2"><span class="boot-char">  / __\_ __| |_ __ _ ___| |/ __\__ _| |_ ___</span></span>
+<span class="boot-gradient-3"><span class="boot-char"> / /  | '__| __/ _` / __| | /  / _` | __/ _ \</span></span>
+<span class="boot-gradient-4"><span class="boot-char">/ /___| |  | || (_| \__ \ |/ / | (_| | ||  __/</span></span>
+<span class="boot-gradient-1"><span class="boot-char">\____/|_|   \__\__,_|___/_/___/\__,_|\__\___|</span></span></pre>
         <div class="boot-version">Version <span id="bootVersion">v1.7.7</span></div>
     <script>
     // 兜底: 2.5秒后强制切换 (即使v2app.js加载失败也保证能看到登录页)

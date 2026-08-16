@@ -3148,6 +3148,14 @@
 
     async function doRealStartBot() {
         if (isPanelLocked()) { toastWarn("面板已锁定，无法操作"); return; }
+        // 先检查服务器号配置
+        const bot = state.panelBot || {};
+        const serverCode = bot.server_code || "";
+        if (!serverCode || serverCode === "待设置") {
+            toastWarn("请先在「设置」中配置服务器号");
+            appendTerminal("❌ 未配置服务器号, 请到「设置」标签页填写服务器号后再启动", "error");
+            return;
+        }
         if (!state.currentBotId) {
             toastWarn("请先创建面板机器人");
             return;
