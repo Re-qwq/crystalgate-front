@@ -3036,8 +3036,8 @@
             toastWarn("请先创建面板机器人");
             return;
         }
-        // 启动菜单: 先弹菜单 (启动/换皮肤/帮助), 选1才真正启动
-        showStartMenu();
+        // 直接启动 (用户要求: 点启动面板就启动, 启动后再进终端输菜单选功能)
+        await doRealStartBot();
         return;
     }
 
@@ -3063,6 +3063,13 @@
                 $("btnStopBot").classList.remove("hidden");
                 $("btnRestartBot").classList.remove("hidden");
                 await loadPanelBot();
+                // 启动成功后展示功能菜单 (终端里可选: 换皮肤/导入/命令等)
+                appendTerminal("", "system");
+                appendTerminal("══ 功能菜单 ══", "system");
+                appendTerminal("  输入 menu 查看全部功能", "info");
+                appendTerminal("  /say 文字  → 机器人说话", "info");
+                appendTerminal("  //命令    → 执行原版命令", "info");
+                appendTerminal("  导入       → 建筑导入", "info");
             } else {
                 const errMsg = res.detail || res.message || "启动失败 (未知原因)";
                 appendTerminal(`❌ 启动失败: ${errMsg}`, "error");
