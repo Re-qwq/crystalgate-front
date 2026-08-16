@@ -1,6 +1,6 @@
 // CrystalGate 后端地址配置 (由守护脚本自动更新, 前端启动时探测存活)
 window.__CG_BACKENDS = [
-    "https://oqkzd-47-93-224-81.run.pinggy-free.link/api/v2",
-    "https://cf7479f036c194dc-47-93-224-81.serveousercontent.com/api/v2",
-    "https://5724d967c27ca72c-47-93-224-81.serveousercontent.com/api/v2"
+    "https://eed72d588e6b83.lhr.life/api/v2",
+    "https://fbcmo-49-235-209-65.run.pinggy-free.link/api/v2",
+    "https://jnjer-49-235-209-65.free.pinggy.net/api/v2"
 ];
