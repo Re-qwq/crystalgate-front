@@ -30,6 +30,8 @@
 
     /** 启动时尝试加载远端后端地址 (失败则回退同源) */
     backendConfigReady = (async function loadBackendConfig() {
+        // 从 Gist 读取后端地址列表 (可能有多个隧道, 自动探测哪个活着)
+        let candidates = [];
         try {
             const ctrl = new AbortController();
             const t = setTimeout(() => ctrl.abort(), 8000);
@@ -37,14 +39,29 @@
             clearTimeout(t);
             if (resp.ok) {
                 const cfg = await resp.json();
-                if (cfg && cfg.api_base) {
-                    API_BASE = cfg.api_base;
-                    const u = new URL(cfg.api_base, location.origin);
-                    WS_BASE = (u.protocol === "https:" ? "wss://" : "ws://") + u.host + "/ws";
-                    console.log("[CrystalGate] 后端地址已加载:", API_BASE);
+                if (cfg && cfg.api_base) candidates.push(cfg.api_base);
+                if (cfg && cfg.backups && Array.isArray(cfg.backups)) {
+                    cfg.backups.forEach(b => candidates.push(b));
                 }
             }
-        } catch (_) { /* 回退同源 */ }
+        } catch (_) { /* 读取失败, 用空列表 */ }
+        // 逐个探测存活 (3秒超时), 用第一个能通的
+        for (const base of candidates) {
+            try {
+                const ctrl = new AbortController();
+                const t = setTimeout(() => ctrl.abort(), 3000);
+                const r = await fetch(base + "/health", { cache: "no-store", signal: ctrl.signal });
+                clearTimeout(t);
+                if (r.ok) {
+                    API_BASE = base;
+                    const u = new URL(base, location.origin);
+                    WS_BASE = (u.protocol === "https:" ? "wss://" : "ws://") + u.host + "/ws";
+                    console.log("[CrystalGate] 后端已连接:", API_BASE);
+                    return;
+                }
+            } catch (_) { /* 下一个 */ }
+        }
+        console.warn("[CrystalGate] 所有后端候选不可达, 使用同源回退");
     })();
 
 
