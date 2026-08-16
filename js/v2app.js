@@ -2105,18 +2105,14 @@
             toastWarn("请填写面板名称和卡密");
             return;
         }
-        if (!serverCode) {
-            toastWarn("请填写服务器/房间编号");
-            return;
-        }
-
+        // 服务器号可选: 创建面板后可在设置里自行修改
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 创建中...';
 
         try {
             const res = await api("/panels", {
                 method: "POST",
-                body: { name, card_key: cardKey, server_code: serverCode },
+                body: { name, card_key: cardKey, server_code: serverCode || "待设置" },
             });
             if (res.success) {
                 toastSuccess("面板创建成功");
@@ -2396,7 +2392,7 @@
                 state.wsReconnectTimer = null;
             }
             updateWsStatus(true, "已连接");
-            appendTerminal("WebSocket 已连接", "success");
+            // 静默连接 (不打扰用户, 移除 PT 风格重连提示)
             // 请求一次状态快照
             try { ws.send(JSON.stringify({ action: "status" })); } catch (e) { /* ignore */ }
         };
@@ -2410,8 +2406,7 @@
                 updateWsStatus(false, "已断开");
                 return;
             }
-            const attempt = state.wsReconnectAttempts + 1;
-            appendTerminal(`WebSocket 连接已断开, 开始重连 (第 ${attempt} 次尝试)`, "warn");
+            // 静默重连 (不显示重连提示)
             scheduleReconnect();
         };
 
