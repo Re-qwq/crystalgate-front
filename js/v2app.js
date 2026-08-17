@@ -823,7 +823,7 @@
     }
 
     function showQuickHelp() {
-        toastInfo('CrystalGate v1.8.2 - Minecraft Bedrock 机器人管理平台');
+        toastInfo('CrystalGate v1.8.4 - Minecraft Bedrock 机器人管理平台');
     }
 
     /** 4399 账号管理弹窗: 提取 sauth_json / 注册新账号 */
@@ -2782,13 +2782,17 @@
         if (state.menuMode === "start-menu") {
             state.menuMode = "";
             if (cmdTrim === "1") {
-                // 机器人已在租赁服 (点启动时已进服)
-                appendTerminal("✅ 已进入租赁服", "success");
-                if (state.panelBot && state.panelBot.name) {
-                    appendTerminal(`   机器人: ${state.panelBot.name}`, "info");
+                // 检查服务器号 → 启动进服
+                const bot = state.panelBot || {};
+                const serverCode = bot.server_code || "";
+                if (!serverCode || serverCode === "待设置" || serverCode.trim() === "") {
+                    toastWarn("请先配置服务器号");
+                    appendTerminal("❌ 未配置服务器号, 请到「设置」中填写服务器号", "error");
+                    appendTerminal("  配置后重新输入 启动 或点启动按钮", "info");
+                    state.menuMode = "";
+                    return;
                 }
-                appendTerminal("   输入 导入 打开建筑工具", "info");
-                state.menuMode = "";
+                await doRealStartBot();
                 return;
             } else if (cmdTrim === "2") {
                 state.menuMode = "skin";
@@ -3216,7 +3220,7 @@
             appendTerminal("→ 输入房间号或关键词搜索:", "info");
             return;
         }
-        if (cmdTrim === "联机" || cmdTrim === "local") {
+        if (cmdTrim === "联机" || cmdTrim === "local" || cmdTrim === "本地联机") {
             state.menuMode = "local-search";
             appendTerminal("══ 本地联机 ══", "system");
             appendTerminal("→ 输入房间号:", "info");
@@ -3285,7 +3289,7 @@
         appendTerminal("  输入编号选择:", "info");
     }
 
-    /** 启动菜单 (启动完毕后弹出): 1启动 2皮肤 */
+    /** 启动菜单: 1启动 2皮肤 3大厅 4本地联机 */
     function showStartMenuAfterBoot() {
         state.menuMode = "start-menu";
         appendTerminal("══ 菜单 ══", "system");
@@ -3320,7 +3324,7 @@
         if (isPanelLocked()) { toastWarn("面板已锁定，无法操作"); return; }
         // 先检查服务器号配置
         const bot = state.panelBot || {};
-        const serverCode = bot.server_code || "";
+        const serverCode = (bot.server_code || "").trim();
         if (!serverCode || serverCode === "待设置") {
             toastWarn("请先在「设置」中配置服务器号");
             appendTerminal("❌ 未配置服务器号, 请到「设置」标签页填写服务器号后再启动", "error");
@@ -3334,6 +3338,9 @@
         try {
             startBtn.disabled = true;
             appendTerminal("正在启动机器人...", "system");
+            // 先更新本地状态和按钮 (不等后端轮询)
+            if (state.panelBot) state.panelBot.status = "connecting";
+            updatePanelBotUI();
             const res = await api(`/bots/${state.currentBotId}/start`, {
                 method: "POST",
                 body: { like: false, skin_name: "", welcome: false },
