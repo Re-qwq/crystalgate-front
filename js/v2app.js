@@ -1907,6 +1907,7 @@
 
     /** 加载仪表盘数据 */
     async function loadDashboard() {
+        refreshCheckinStatus();
         updateWelcomeTime();
         await Promise.allSettled([loadStats(), loadActivity()]);
     }
@@ -7987,6 +7988,13 @@
             sendBtn.innerHTML = '<i class="fas fa-stop"></i> 停止';
             sendBtn.disabled = true;
         }
+        // Bug 反馈检测: 用户消息以"bug:"开头时记录到 bug 面板
+        if (msg.toLowerCase().startsWith("bug:") || msg.startsWith("BUG:") || msg.startsWith("反馈")) {
+            try {
+                await api("/bugs/report", { method: "POST", body: { content: msg } });
+                appendAIMessage("assistant", "🐛 已收到你的 Bug 反馈, 感谢! 开发团队会尽快处理。");
+            } catch (e) { /* 记录失败不阻塞对话 */ }
+        }
         try {
             const res = await api("/ai/chat", {
                 method: "POST",
@@ -7996,6 +8004,11 @@
             if (res && res.success) {
                 appendAIMessage("assistant", res.reply || "(空回复)");
                 aiHistory.push({ role: "assistant", content: res.reply || "" });
+                // 超上下文检测: 历史超过32轮时自动裁剪 (保留最近16轮)
+                if (aiHistory.length > 64) {
+                    aiHistory.splice(0, aiHistory.length - 32);
+                    appendAIMessage("assistant", "📝 (对话较长, 已自动遗忘最早的部分内容以保持流畅)");
+                }
             } else {
                 appendAIMessage("assistant", "⚠️ " + ((res && res.message) || "调用失败"));
             }
@@ -8026,10 +8039,34 @@
             if (res) {
                 toastSuccess(res.message || "签到完成");
                 loadAICredits();
+                const btn = $("btnAiCheckin");
+                const status = $("checkinStatus");
+                if (btn && res.success) {
+                    btn.disabled = true;
+                    btn.textContent = "今日已签到";
+                    btn.style.opacity = "0.6";
+                }
+                if (status) status.textContent = res.message || "签到可得 20 积分";
             }
         } catch (e) {
             toastError("签到失败");
         }
+    }
+
+    /** 每日签到状态刷新 (仪表盘加载时调用) */
+    async function refreshCheckinStatus() {
+        try {
+            const res = await api("/ai/checkin", { method: "POST", body: {} });
+            const btn = $("btnAiCheckin");
+            const status = $("checkinStatus");
+            if (btn && !res.success) {
+                // 今天已签: 禁用按钮
+                btn.disabled = true;
+                btn.textContent = "今日已签到";
+                btn.style.opacity = "0.6";
+                if (status) status.textContent = res.message || "明天再来";
+            }
+        } catch (e) { /* 忽略 */ }
     }
 
     async function handleAIFile(event) {

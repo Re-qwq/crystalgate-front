@@ -168,7 +168,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
 }
 .boot-logo {
     font-family: var(--font-mono);
-    font-size: 14px;
+    font-size: 9px;
+    overflow-x: hidden;
+    max-width: 100%;
     line-height: 1.25;
     margin: 0 0 16px 0;
     letter-spacing: 0;
@@ -1652,6 +1654,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
 @media (max-width: 480px) {
     .stats-grid { grid-template-columns: 1fr; }
     .form-row { flex-direction: column; }
+    .boot-logo { font-size: 8px; }
     .captcha-wrap { flex-direction: column; align-items: stretch; }
     .captcha-img-box { width: 100%; min-height: 56px; height: 56px; }
     .auth-card { padding: 24px 20px; }
@@ -2089,6 +2092,16 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
             </div>
 
             <div class="stats-grid">
+                <div class="checkin-banner" style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,#1f6feb18,#388bfd18);border:1px solid #1f6feb44;border-radius:12px;padding:12px 16px;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <i class="fas fa-calendar-check" style="color:#3fb950;font-size:18px;"></i>
+                        <div>
+                            <div style="font-size:14px;font-weight:600;">每日签到</div>
+                            <div style="font-size:12px;color:var(--text-tertiary);" id="checkinStatus">签到可得 20 积分</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-sm" id="btnAiCheckin">签到 +20</button>
+                </div>
                 <div class="stat-card">
                     <div class="stat-icon blue"><i class="fas fa-th-large"></i></div>
                     <div class="stat-info">
@@ -3434,12 +3447,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
     <section class="view" id="view-ai">
         <div class="ai-container" style="display:flex;flex-direction:column;height:calc(100vh - 130px);width:100%;background:var(--bg-card);border:1px solid var(--border-default);border-radius:16px;overflow:hidden;">
             <div class="ai-header" style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid var(--border-default);flex-shrink:0;">
-                <div style="display:flex;align-items:center;gap:10px;">
-                    <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#58a6ff,#a371f7);display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;">🤖</div>
-                    <div>
-                        <div style="font-weight:600;font-size:15px;">智能助手</div>
-                        <div style="font-size:11px;color:var(--text-tertiary);">对话 1 积分/次 · 支持上下文阅读</div>
-                    </div>
+                <div>
+                    <div style="font-weight:600;font-size:15px;">智能助手</div>
+                    <div style="font-size:11px;color:var(--text-tertiary);">对话 1 积分/次 · 支持上下文阅读</div>
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;">
                     <button class="btn btn-ghost btn-sm" id="btnAiClear" title="清空对话"><i class="fas fa-broom"></i> 清空</button>
@@ -3454,17 +3464,14 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
             </div>
             <div class="ai-input-area" style="padding:12px 16px;border-top:1px solid var(--border-default);background:var(--bg-card);flex-shrink:0;">
                 <input type="file" id="aiFileInput" style="display:none;" accept=".txt,.md,.py,.json,.log">
-                <div style="display:flex;gap:8px;align-items:center;">
-                    <button class="btn btn-ghost btn-sm" id="btnAiAttach" title="上传文件 (≤3MB)"><i class="fas fa-paperclip"></i></button>
-                    <input type="text" id="aiInput" placeholder="给智能助手发消息..." style="flex:1;background:#0d1117;border:1px solid var(--border-default);border-radius:10px;padding:10px 14px;color:var(--text-primary);font-size:14px;" autocomplete="off">
-                    <button class="btn btn-primary" id="btnAiSend" style="min-width:76px;"><i class="fas fa-paper-plane"></i> 发送</button>
+                <div style="display:flex;gap:6px;align-items:center;width:100%;">
+                    <button class="btn btn-ghost btn-sm" id="btnAiAttach" title="上传文件 (≤3MB)" style="flex-shrink:0;width:34px;padding:0;"><i class="fas fa-paperclip"></i></button>
+                    <input type="text" id="aiInput" placeholder="给智能助手发消息..." style="flex:1;min-width:0;background:#0d1117;border:1px solid var(--border-default);border-radius:10px;padding:10px 12px;color:var(--text-primary);font-size:14px;" autocomplete="off">
+                    <button class="btn btn-primary" id="btnAiSend" style="flex-shrink:0;min-width:64px;padding:10px 14px;"><i class="fas fa-paper-plane"></i></button>
                 </div>
                 <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--text-tertiary);">
                     <span>Ctrl+Enter 换行</span>
-                    <span style="display:flex;gap:12px;">
-                        <span id="aiCredits" style="cursor:pointer;" title="点击签到">积分: --</span>
-                        <button class="btn-link" id="btnAiCheckin" style="background:none;border:none;color:#58a6ff;font-size:11px;cursor:pointer;">每日签到 +20</button>
-                    </span>
+                    <span id="aiCredits">积分: --</span>
                 </div>
             </div>
         </div>
