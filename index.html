@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/main.css?v=1.7.7">
+    <link rel="stylesheet" href="css/main.css?v=1.7.8">
     <script>
     // ═══ 安全防护 (防F12/防调试) ═══
     (function(){
@@ -172,11 +172,8 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
     line-height: 1.25;
     margin: 0 0 16px 0;
     letter-spacing: 0;
-    white-space: pre;
     transform: scale(1.2);
     transform-origin: center;
-    overflow: hidden;
-    max-width: 100%;
 }
 #bootScreen.fade-out { opacity: 0; visibility: hidden; pointer-events: none; }
 @keyframes bootGlow {
@@ -1792,8 +1789,8 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
 .btn-info:hover:not(:disabled) { background: rgba(88,166,255,0.25); }
     </style>
     <!-- Creative Effects (原创特效, 与方寸云端不同) -->
-    <link rel="stylesheet" href="css/creative-effects.css?v=1.7.7">
-    <link rel="stylesheet" href="vendor/xterm/xterm.css?v=1.7.7">
+    <link rel="stylesheet" href="css/creative-effects.css?v=1.7.8">
+    <link rel="stylesheet" href="vendor/xterm/xterm.css?v=1.7.8">
 </head>
 <body>
 
@@ -1802,11 +1799,10 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
      ========================================================================== -->
 <div class="screen" id="bootScreen">
         <pre class="boot-logo"><span class="boot-gradient-1"><span class="boot-char">   ___      _            _  ___      _   </span></span>
-<span class="boot-gradient-2"><span class="boot-char">  / __\_ __| |_ __ _ ___| |/ __\__ _| |_ ___</span></span>
-<span class="boot-gradient-3"><span class="boot-char"> / /  | '__| __/ _` / __| | /  / _` | __/ _ \</span></span>
-<span class="boot-gradient-4"><span class="boot-char">/ /___| |  | || (_| \__ \ |/ / | (_| | ||  __/</span></span>
-<span class="boot-gradient-1"><span class="boot-char">\____/|_|   \__\__,_|___/_/___/\__,_|\__\___|</span></span></pre>
-        <div class="boot-version">Version <span id="bootVersion">v1.7.7</span></div>
+<span class="boot-gradient-1"><span class="boot-char">  / __|_ __| |__  _ _ __| |/ __|__ _| |_ ___</span></span>
+<span class="boot-gradient-2"><span class="boot-char"> | (__| '__| '_ \| '_/ _| | (_ / _` |  _/ -_)</span></span>
+<span class="boot-gradient-1"><span class="boot-char">  \___|_|  |_.__/|_| \__|_|\___\__,_|\__\___|</span></span></pre>
+        <div class="boot-version">Version <span id="bootVersion">v1.7.8</span></div>
     <script>
     // 兜底: 2.5秒后强制切换 (即使v2app.js加载失败也保证能看到登录页)
     // 修复: 加全局标记, 登录成功(showApp)后不再强制显示登录页
@@ -1956,7 +1952,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
         <div class="topbar-brand">
             <div class="brand-icon"><i class="fas fa-terminal"></i></div>
             <span class="brand-name">CrystalGate</span>
-            <span class="brand-version" id="topbarVersion">v1.7.7</span>
+            <span class="brand-version" id="topbarVersion">v1.7.8</span>
         </div>
         <div class="topbar-spacer"></div>
         <div class="topbar-actions">
@@ -3982,8 +3978,8 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
 <!-- ==========================================================================
      Scripts
      ========================================================================== -->
-<script src="vendor/xterm/xterm.js?v=1.7.7"></script>
-<script src="js/creative-effects.js?v=1.7.7"></script>
+<script src="vendor/xterm/xterm.js?v=1.7.8"></script>
+<script src="js/creative-effects.js?v=1.7.8"></script>
 <script src="js/backend-config.js?v=1.7.2"></script>
     <script src="js/v2app.js?v=1.7.2"></script>
 </body>

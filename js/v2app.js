@@ -823,7 +823,7 @@
     }
 
     function showQuickHelp() {
-        toastInfo('CrystalGate v1.7.7 - Minecraft Bedrock 机器人管理平台');
+        toastInfo('CrystalGate v1.7.8 - Minecraft Bedrock 机器人管理平台');
     }
 
     /** 4399 账号管理弹窗: 提取 sauth_json / 注册新账号 */
