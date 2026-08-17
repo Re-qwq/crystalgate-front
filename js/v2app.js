@@ -3369,8 +3369,8 @@
                     const isAdmin = state.currentUser && state.currentUser.is_admin;
                     modeGroup.classList.toggle("hidden", !isAdmin);
                 }
-            } else {
-                // 没有机器人 - 清空表单准备创建
+            } else if (state.panelBot === null) {
+                // 仅在面板从未创建过机器人时清空表单 (避免覆盖用户输入)
                 $("botConfigForm").reset();
                 const modeGroup = $("botConfigAccountModeGroup");
                 if (modeGroup) {
@@ -5705,7 +5705,8 @@
                 clearTimeout(window.__bcAutosaveTimer);
                 window.__bcAutosaveTimer = setTimeout(() => {
                     if (!state.botConfigDirty) return;
-                    handleSaveBotConfig();
+                    state.botConfigDirty = false;
+                    handleSaveBotConfig().catch(() => { state.botConfigDirty = true; });
                 }, 800);
             };
             $("botConfigForm").addEventListener("submit", handleSaveBotConfig);
