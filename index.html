@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/main.css?v=1.8.0">
+    <link rel="stylesheet" href="css/main.css?v=1.8.6">
     <script>
     // ═══ 安全防护 (防F12/防调试) ═══
     (function(){
@@ -162,7 +162,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
 #bootScreen {
     background: #0a0e14;
     flex-direction: column;
-    gap: 12px;
+    gap: 6px;
     transition: opacity 0.6s ease, visibility 0.6s ease;
     overflow: hidden;
 }
@@ -170,7 +170,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
     font-family: var(--font-mono);
     font-size: 22px;
     line-height: 1.25;
-    margin: 0 0 6px 0;
+    margin: 0;
     letter-spacing: 0;
     transform: scale(1.2);
     transform-origin: center;
@@ -198,13 +198,13 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
     font-size: 13px;
     color: var(--text-secondary);
     letter-spacing: 1px;
-    margin-top: 4px;
+    margin-top: 0;
 }
 .boot-version span { color: var(--color-success); font-weight: 600; }
 .boot-loader {
     display: flex;
     gap: 6px;
-    margin-top: 8px;
+    margin-top: 2px;
 }
 .boot-loader .dot {
     width: 8px; height: 8px; border-radius: 50%;
@@ -388,7 +388,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
     box-shadow: 0 0 0 3px rgba(88,166,255,0.12);
 }
 .form-input.error { border-color: var(--color-danger); }
-.form-row { display: flex; gap: 12px; }
+.form-row { display: flex; gap: 6px; }
 .form-row > .form-group { flex: 1; }
 .captcha-wrap {
     display: flex; gap: 10px; align-items: flex-end;
@@ -718,7 +718,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
     justify-content: space-between;
     margin-bottom: 24px;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 6px;
 }
 .page-title {
     font-size: 20px;
@@ -845,7 +845,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
 .activity-item {
     display: flex;
     align-items: flex-start;
-    gap: 12px;
+    gap: 6px;
     padding: 12px 0;
     border-bottom: 1px solid var(--border-muted);
 }
@@ -1148,7 +1148,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
 /* ---- Plugins Tab ---- */
 .plugin-list { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
 .plugin-item {
-    display: flex; align-items: center; gap: 12px;
+    display: flex; align-items: center; gap: 6px;
     padding: 12px 14px;
     background: var(--bg-elevated);
     border: 1px solid var(--border-muted);
@@ -1191,7 +1191,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
 }
 .bot-info { flex: 1; min-width: 0; }
 .bot-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-.bot-meta { font-size: 12px; color: var(--text-secondary); margin-top: 3px; display: flex; gap: 12px; flex-wrap: wrap; }
+.bot-meta { font-size: 12px; color: var(--text-secondary); margin-top: 3px; display: flex; gap: 6px; flex-wrap: wrap; }
 .bot-meta span { display: inline-flex; align-items: center; gap: 4px; }
 .bot-actions { display: flex; gap: 6px; flex-shrink: 0; }
 
@@ -1454,7 +1454,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
 .stats-summary {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 12px;
+    gap: 6px;
     margin-bottom: 20px;
 }
 .summary-item {
@@ -1532,7 +1532,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
 }
 .runner-empty { color: var(--text-tertiary); font-size: 13px; text-align: center; padding: 20px 12px; }
 .runner-upload-btn { min-height: 48px; font-size: 14px; }
-.runner-cwd-timeout { display: flex; gap: 12px; }
+.runner-cwd-timeout { display: flex; gap: 6px; }
 .runner-cwd-group { flex: 1; }
 .runner-timeout-group { width: 120px; flex-shrink: 0; }
 .runner-action-row { display: flex; gap: 10px; }
@@ -1770,12 +1770,12 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
 .builder-panel { display: none; }
 .builder-panel.active { display: block; }
 .builder-hint { color: var(--text-tertiary); font-size: 12px; margin: 4px 0 12px; }
-.builder-options { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
+.builder-options { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
 .builder-options label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); }
 .builder-options select, .builder-options input[type="number"] { background: var(--bg-input); border: 1px solid var(--border-default); color: var(--text-primary); border-radius: var(--radius-sm); padding: 4px 8px; font-size: 13px; }
 .builder-result { margin-top: 16px; }
 .builder-result p { font-size: 13px; color: var(--text-secondary); margin: 4px 0; }
-.builder-item-form { display: grid; gap: 12px; }
+.builder-item-form { display: grid; gap: 6px; }
 .builder-item-form label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
 .builder-item-form input[type="text"] { flex: 1; background: var(--bg-input); border: 1px solid var(--border-default); color: var(--text-primary); border-radius: var(--radius-sm); padding: 6px 10px; font-size: 13px; }
 .builder-item-form input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
@@ -1790,8 +1790,8 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
 .btn-info:hover:not(:disabled) { background: rgba(88,166,255,0.25); }
     </style>
     <!-- Creative Effects (原创特效, 与方寸云端不同) -->
-    <link rel="stylesheet" href="css/creative-effects.css?v=1.8.0">
-    <link rel="stylesheet" href="vendor/xterm/xterm.css?v=1.8.0">
+    <link rel="stylesheet" href="css/creative-effects.css?v=1.8.6">
+    <link rel="stylesheet" href="vendor/xterm/xterm.css?v=1.8.6">
 </head>
 <body>
 
@@ -1803,7 +1803,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
 <span class="boot-gradient-1"><span class="boot-char">  / __|_ __| |__  _ _ __| |/ __|__ _| |_ ___</span></span>
 <span class="boot-gradient-2"><span class="boot-char"> | (__| '__| '_ \| '_/ _| | (_ / _` |  _/ -_)</span></span>
 <span class="boot-gradient-1"><span class="boot-char">  \___|_|  |_.__/|_| \__|_|\___\__,_|\__\___|</span></span></pre>
-        <div class="boot-version">Version <span id="bootVersion">v1.8.0</span></div>
+        <div class="boot-version">Version <span id="bootVersion">v1.8.6</span></div>
     <script>
     // 兜底: 2.5秒后强制切换 (即使v2app.js加载失败也保证能看到登录页)
     // 修复: 加全局标记, 登录成功(showApp)后不再强制显示登录页
@@ -1953,7 +1953,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
         <div class="topbar-brand">
             <div class="brand-icon"><i class="fas fa-terminal"></i></div>
             <span class="brand-name">CrystalGate</span>
-            <span class="brand-version" id="topbarVersion">v1.8.0</span>
+            <span class="brand-version" id="topbarVersion">v1.8.6</span>
         </div>
         <div class="topbar-spacer"></div>
         <div class="topbar-actions">
@@ -2239,7 +2239,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
                     <span id="panelStatusText" style="font-size:13px;color:var(--text-secondary);">未启动</span>
                 </div>
                 <div class="panel-detail-actions">
-                    <button class="btn btn-success btn-sm" id="btnStartBot">🚀 
+                    <button class="btn btn-success btn-sm" id="btnStartBot">
                         <i class="fas fa-play"></i> 启动
                     </button>
                     <button class="btn btn-danger btn-sm hidden" id="btnStopBot">
@@ -3496,7 +3496,6 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
                             <option value="rental">租赁服</option>
                             <option value="lobby">联机大厅</option>
                             <option value="local">本地联机</option>
-                            <option value="mountain">山头</option>
                             <option value="player">玩家</option>
                         </select>
                         <input type="text" id="ipQueryInput" placeholder="输入服务器号/房间号" style="flex:1;min-width:180px;padding:10px 12px;background:var(--bg-input);border:1px solid var(--border-default);border-radius:6px;color:var(--text-primary);outline:none;" onfocus="this.style.borderColor='#58a6ff'" onblur="this.style.borderColor='#30363d'">
@@ -3979,9 +3978,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
 <!-- ==========================================================================
      Scripts
      ========================================================================== -->
-<script src="vendor/xterm/xterm.js?v=1.8.0"></script>
-<script src="js/creative-effects.js?v=1.8.0"></script>
-<script src="js/backend-config.js?v=1.7.2"></script>
-    <script src="js/v2app.js?v=1.7.2"></script>
+<script src="vendor/xterm/xterm.js?v=1.8.6"></script>
+<script src="js/creative-effects.js?v=1.8.6"></script>
+<script src="js/backend-config.js?v=1.8.6"></script>
+    <script src="js/v2app.js?v=1.8.6"></script>
 </body>
 </html>
