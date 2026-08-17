@@ -7926,7 +7926,7 @@
 
 
 /* ======================================================================
-   20. 晶灵智能 (AI 助手)
+   20. 智能助手 (AI 助手)
    ====================================================================== */
     const aiHistory = [];
     let aiGenerating = false;
@@ -7954,8 +7954,7 @@
         if (checkinBtn) checkinBtn.addEventListener("click", doAICheckin);
         if (attachBtn) attachBtn.addEventListener("click", () => fileInput && fileInput.click());
         if (fileInput) fileInput.addEventListener("change", handleAIFile);
-        // 初始欢迎
-        appendAIMessage("assistant", "你好! 我是晶灵, CrystalGate 面板智能助手。\n可以帮你解答面板功能、游戏问题, 也能帮你写插件。");
+        // 积分加载 (空状态文案由 HTML 提供)
         loadAICredits();
     }
 
@@ -7978,6 +7977,8 @@
         const msg = input.value.trim();
         if (!msg || aiGenerating) return;
         input.value = "";
+        const emptyState = $("aiEmptyState");
+        if (emptyState) emptyState.style.display = "none";
         appendAIMessage("user", msg);
         aiHistory.push({ role: "user", content: msg });
         aiGenerating = true;
@@ -8014,7 +8015,7 @@
             const res = await api("/ai/credits");
             if (res && res.success) {
                 const el = $("aiCredits");
-                if (el) el.textContent = res.is_admin ? "积分: 无限 (管理员)" : "积分: " + res.credits;
+                if (el) el.textContent = res.is_admin ? "积分: ∞ (管理员)" : "积分: " + res.credits;
             }
         } catch (e) { /* 忽略 */ }
     }
@@ -8035,8 +8036,8 @@
         const file = event.target.files[0];
         event.target.value = "";
         if (!file) return;
-        if (file.size > 10 * 1024 * 1024) {
-            toastError("文件超过 10MB 限制");
+        if (file.size > 3 * 1024 * 1024) {
+            toastError("文件超过 3MB 限制");
             return;
         }
         toastInfo("正在读取文件: " + file.name);
