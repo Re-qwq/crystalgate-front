@@ -823,7 +823,7 @@
     }
 
     function showQuickHelp() {
-        toastInfo('CrystalGate v1.8.5 - Minecraft Bedrock 机器人管理平台');
+        toastInfo('CrystalGate v1.8.6 - Minecraft Bedrock 机器人管理平台');
     }
 
     /** 4399 账号管理弹窗: 提取 sauth_json / 注册新账号 */
@@ -8252,6 +8252,11 @@
             } else {
                 const remain = Math.ceil((60000 - (now - state.lastBugReportTs)) / 1000);
                 appendAIMessage("assistant", `⏳ 反馈冷却中, 请 ${remain} 秒后再试`);
+                aiGenerating = false;
+                if (sendBtn) {
+                    sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 发送';
+                    sendBtn.disabled = false;
+                }
                 return;
             }
         }
@@ -8274,11 +8279,12 @@
             }
         } catch (e) {
             appendAIMessage("assistant", "⚠️ 网络错误: " + (e.message || ""));
-        }
-        aiGenerating = false;
-        if (sendBtn) {
-            sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 发送';
-            sendBtn.disabled = false;
+        } finally {
+            aiGenerating = false;
+            if (sendBtn) {
+                sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 发送';
+                sendBtn.disabled = false;
+            }
         }
         loadAICredits();
     }
