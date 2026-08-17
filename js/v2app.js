@@ -1913,7 +1913,7 @@
             const credRes = await api("/ai/credits");
             const el = $("statCredits");
             if (el && credRes && credRes.success) {
-                el.textContent = credRes.is_admin ? "∞" : credRes.credits;
+                el.textContent = credRes.credits;
             }
         } catch (e) { /* 忽略 */ }
         updateWelcomeTime();
@@ -8070,7 +8070,7 @@
             const res = await api("/ai/credits");
             if (res && res.success) {
                 const el = $("aiCredits");
-                if (el) el.textContent = res.is_admin ? "积分: ∞ (管理员)" : "积分: " + res.credits;
+                if (el) el.textContent = "积分: " + res.credits;
             }
         } catch (e) { /* 忽略 */ }
     }
