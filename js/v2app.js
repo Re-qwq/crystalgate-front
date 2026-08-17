@@ -179,7 +179,7 @@
         wsManuallyClosed: false,      // 是否主动关闭 (登出/401), 主动关闭时不自动重连
         theme: 'dark',
         botConfigDirty: false,        // 机器人配置表单是否有未保存的修改
-        menuMode: "",                 // V1.5 TD 菜单状态: main/start-confirm/skin/skin-presets/skin-presets-pick/skin-search
+        menuMode: "",                 // 菜单状态: main/start-menu/start-confirm/skin/import-menu/export-coords/import-search/import-resume/import-confirm/import-pick: main/start-confirm/skin/skin-presets/skin-presets-pick/skin-search
         skinPresets: [],              // 预设皮肤缓存
         skinMarket: [],               // 商城搜索皮肤缓存
         // -- MPay 手机号登录会话状态 --
@@ -823,7 +823,7 @@
     }
 
     function showQuickHelp() {
-        toastInfo('CrystalGate v1.7.9 - Minecraft Bedrock 机器人管理平台');
+        toastInfo('CrystalGate v1.8.0 - Minecraft Bedrock 机器人管理平台');
     }
 
     /** 4399 账号管理弹窗: 提取 sauth_json / 注册新账号 */
@@ -2772,7 +2772,6 @@
         if (state.menuMode === "start-menu") {
             state.menuMode = "";
             if (cmdTrim === "1") {
-                // 真正启动
                 doStartBot();
             } else if (cmdTrim === "2") {
                 state.menuMode = "skin";
@@ -2784,14 +2783,16 @@
                 appendTerminal("══ 帮助 ══", "system");
                 appendTerminal("  [1] 启动机器人 → 机器进入租赁服", "system");
                 appendTerminal("  [2] 换皮肤 → 搜索并换上皮肤", "system");
+                appendTerminal("  [3] 导入/导出 → 建筑工具", "system");
                 appendTerminal("  终端输入 /say 消息 → 机器人说话", "system");
                 appendTerminal("  终端输入 //命令 → 机器人执行命令", "system");
                 showStartMenu();
             } else if (cmdTrim === "4") {
-                // 4=取消菜单, 进入正常命令模式
-                appendTerminal("菜单已取消, 可直接输入命令 (如 /say 消息)", "info");
+                showImportMenu();
+            } else if (cmdTrim === "0") {
+                appendTerminal("菜单已取消", "info");
             } else {
-                appendTerminal("❌ 无此选项: " + cmdTrim + " (输入 1/2/3, 或输入其他内容退出菜单)", "warn");
+                appendTerminal("❌ 无此选项: " + cmdTrim + " (输入 1/2/3/4)", "warn");
                 showStartMenu();
             }
             return;
@@ -2829,11 +2830,22 @@
                 state.menuMode = "import-search";
                 appendTerminal("→ 输入文件名关键词 (模糊搜索):", "info");
                 return;
+            } else if (cmdTrim === "5") {
+                // 导出建筑: 输入坐标范围
+                state.menuMode = "export-coords";
+                appendTerminal("══ 导出建筑 ══", "system");
+                appendTerminal("  格式: x1,y1,z1,x2,y2,z2 (两个对角坐标)", "system");
+                appendTerminal("  示例: 0,64,0,20,80,20", "system");
+                appendTerminal("  输入坐标范围:", "info");
+                return;
+            } else if (cmdTrim === "0") {
+                appendTerminal("菜单已关闭, 可直接输入命令", "info");
+                return;
             } else if (cmdTrim === "menu") {
                 showMainMenu();
                 return;
             } else {
-                appendTerminal("❌ 无此选项: " + cmdTrim + " (输入 1/2/3 或 menu)", "warn");
+                appendTerminal("❌ 无此选项: " + cmdTrim + " (输入 1/2/3/4/5/0 或 menu)", "warn");
                 return;
             }
         }
@@ -2861,6 +2873,42 @@
             } else {
                 showMainMenu();
             }
+            return;
+        }
+        if (state.menuMode === "export-coords") {
+            state.menuMode = "";
+            const coords = cmdTrim.split(",").map(Number);
+            if (coords.length !== 6 || coords.some(isNaN)) {
+                appendTerminal("❌ 格式错误, 请输入 6 个数字 (x1,y1,z1,x2,y2,z2)", "warn");
+                appendTerminal("  示例: 0,64,0,20,80,20", "info");
+                state.menuMode = "export-coords";
+                return;
+            }
+            const [x1, y1, z1, x2, y2, z2] = coords;
+            const total = (Math.abs(x2-x1)+1) * (Math.abs(y2-y1)+1) * (Math.abs(z2-z1)+1);
+            appendTerminal(`导出范围: (${x1},${y1},${z1}) ~ (${x2},${y2},${z2}) = ${total} 方块`, "info");
+            if (total > 2097152) {
+                appendTerminal("❌ 范围过大 (最大 128×128×128), 请缩小范围", "error");
+                state.menuMode = "export-coords";
+                return;
+            }
+            appendTerminal("⏳ 正在导出... (大范围可能需要几分钟)", "info");
+            try {
+                const res = await api(`/panel/${state.currentBotId}/export`, {
+                    method: "POST",
+                    body: { x1, y1, z1, x2, y2, z2, format: "nbt" },
+                    timeout: 600000,
+                });
+                if (res && res.success) {
+                    appendTerminal(`✅ 导出完成! 文件: ${res.data.file}`, "success");
+                    appendTerminal(`  下载地址: /api/panel/${state.currentBotId}/export/${res.data.file.replace(".nbt","")}`, "info");
+                } else {
+                    appendTerminal("❌ 导出失败: " + ((res && res.message) || "未知"), "error");
+                }
+            } catch (e) {
+                appendTerminal("❌ 导出失败: " + (e.message || "网络错误"), "error");
+            }
+            showMainMenu();
             return;
         }
         if (state.menuMode === "import-resume") {
@@ -3129,25 +3177,27 @@
         state.menuMode = "import-menu";
         appendTerminal("══ 建筑工具 ══", "system");
         appendTerminal("  [1] 开始导入", "system");
-        appendTerminal("  [2] 导出建筑", "system");
+        appendTerminal("  [2] 导出建筑 (NBT 格式)", "system");
         appendTerminal("  [3] 帮助", "system");
         appendTerminal("  [0] 返回", "system");
         appendTerminal("  输入编号选择:", "info");
     }
 
-    /** 启动菜单: 启动/换皮肤/帮助 */
+    /** 启动菜单: 启动/换皮肤/帮助/导入/导出 */
     function showStartMenu() {
         state.menuMode = "start-menu";
         appendTerminal("══ 启动菜单 ══", "system");
         appendTerminal("  [1] 启动机器人", "system");
         appendTerminal("  [2] 换皮肤", "system");
         appendTerminal("  [3] 帮助", "system");
+        appendTerminal("  [4] 导入/导出建筑", "system");
         appendTerminal("  输入编号选择:", "info");
     }
 
-    /** 真正执行启动 (菜单选1后调用) */
+    /** 真正执行启动 (菜单选1后调用, 带进度条) */
     async function doStartBot() {
-        doRealStartBot();
+        appendTerminal("⏳ 正在启动机器人...", "info");
+        await doRealStartBot();
     }
 
     async function startBot() {
@@ -3157,9 +3207,8 @@
             toastWarn("请先创建面板机器人");
             return;
         }
-        // 直接启动 (用户要求: 点启动面板就启动, 启动后再进终端输菜单选功能)
-        await doRealStartBot();
-        return;
+        // 用户要求: 点启动 → 显示菜单 (选1真正启动, 选2换皮肤, 选3帮助)
+        showStartMenu();
     }
 
     async function doRealStartBot() {
@@ -3191,13 +3240,9 @@
                 $("btnStopBot").classList.remove("hidden");
                 $("btnRestartBot").classList.remove("hidden");
                 await loadPanelBot();
-                // 启动成功后展示功能菜单 (终端里可选: 换皮肤/导入/命令等)
+                // 启动成功后展示功能菜单
                 appendTerminal("", "system");
-                appendTerminal("══ 功能菜单 ══", "system");
-                appendTerminal("  输入 menu 查看全部功能", "info");
-                appendTerminal("  /say 文字  → 机器人说话", "info");
-                appendTerminal("  //命令    → 执行原版命令", "info");
-                appendTerminal("  导入       → 建筑导入", "info");
+                showMainMenu();
             } else {
                 const errMsg = res.detail || res.message || "启动失败 (未知原因)";
                 appendTerminal(`❌ 启动失败: ${errMsg}`, "error");
@@ -3216,7 +3261,7 @@
         }
     }
 
-    /** 显示主菜单 (启动后才可见; 短行防换行) */
+    /** 显示主菜单 (启动后才可见) */
     function showMainMenu() {
         state.menuMode = "main";
         appendTerminal("", "system");
@@ -3225,6 +3270,8 @@
         appendTerminal("  [2] 查看状态", "system");
         appendTerminal("  [3] 帮助", "system");
         appendTerminal("  [4] 导入建筑", "system");
+        appendTerminal("  [5] 导出建筑", "system");
+        appendTerminal("  [0] 关闭菜单", "system");
         appendTerminal("────────────", "system");
     }
 
@@ -7928,7 +7975,7 @@
         }
     };
 
-    document.addEventListener("DOMContentLoaded", init);
+    document.addEventListener("DOMContentLoaded", () => init());  // 用箭头函数取最新 init (含 initAI 包装)
 
 })();
 
@@ -8148,6 +8195,24 @@
         }
         aiGenerating = false;
     }
+
+    // 备用: 每 500ms 重试绑定 (直到成功) — 防止 DOM 异步加载导致按钮无响应
+    let _aiRetryCount = 0;
+    const _aiRetry = setInterval(() => {
+        const s = $("btnAiSend");
+        const i = $("aiInput");
+        if (s && i && (s._aiBound || _aiRetryCount > 20)) {
+            clearInterval(_aiRetry);
+            if (!s._aiBound) {
+                s.addEventListener("click", () => sendAIMessage());
+                i.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAIMessage(); }
+                });
+                s._aiBound = true;
+            }
+        }
+        _aiRetryCount++;
+    }, 500);
 
     // AI 初始化钩子: 在 init() 里调用
     const _origInit2 = init;
