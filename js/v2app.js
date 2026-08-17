@@ -1908,6 +1908,14 @@
     /** 加载仪表盘数据 */
     async function loadDashboard() {
         refreshCheckinStatus();
+        // 积分显示到仪表盘卡片
+        try {
+            const credRes = await api("/ai/credits");
+            const el = $("statCredits");
+            if (el && credRes && credRes.success) {
+                el.textContent = credRes.is_admin ? "∞" : credRes.credits;
+            }
+        } catch (e) { /* 忽略 */ }
         updateWelcomeTime();
         await Promise.allSettled([loadStats(), loadActivity()]);
     }
@@ -7941,6 +7949,13 @@
         const fileInput = $("aiFileInput");
         if (!sendBtn || !input) return;
         sendBtn.addEventListener("click", () => sendAIMessage());
+        document.addEventListener("click", (e) => {
+            const btn = e.target.closest && e.target.closest("#btnAiSend");
+            if (btn && btn !== sendBtn) {
+                e.preventDefault();
+                sendAIMessage();
+            }
+        });
         input.addEventListener("keydown", (e) => {
             if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -7952,7 +7967,14 @@
             $("aiMessages").innerHTML = "";
             appendAIMessage("assistant", "对话已清空, 有什么想问的?");
         });
-        if (checkinBtn) checkinBtn.addEventListener("click", doAICheckin);
+        // 签到按钮: 全局事件委托 (视图切换后仍然有效)
+        document.addEventListener("click", (e) => {
+            const btn = e.target.closest && e.target.closest("#btnAiCheckin");
+            if (btn) {
+                e.preventDefault();
+                doAICheckin();
+            }
+        });
         if (attachBtn) attachBtn.addEventListener("click", () => fileInput && fileInput.click());
         if (fileInput) fileInput.addEventListener("change", handleAIFile);
         // 积分加载 (空状态文案由 HTML 提供)
@@ -7977,6 +7999,18 @@
         if (!input) return;
         const msg = input.value.trim();
         if (!msg || aiGenerating) return;
+        // 积分检查 (无积分拦截, Bug反馈除外)
+        const isBugReport = msg.toLowerCase().startsWith("bug:") || msg.startsWith("BUG:") || msg.startsWith("反馈");
+        if (!isBugReport) {
+            try {
+                const credRes = await api("/ai/credits");
+                if (credRes && credRes.success && !credRes.is_admin && credRes.credits <= 0) {
+                    appendAIMessage("assistant", "⚠️ 积分不足! 请先签到或注册机器人获取积分。\n(以「反馈」开头的消息可以免费发送 Bug 反馈)");
+                    toastWarn("积分不足");
+                    return;
+                }
+            } catch (e) { /* 积分检查失败不阻塞 */ }
+        }
         input.value = "";
         const emptyState = $("aiEmptyState");
         if (emptyState) emptyState.style.display = "none";
@@ -7988,12 +8022,20 @@
             sendBtn.innerHTML = '<i class="fas fa-stop"></i> 停止';
             sendBtn.disabled = true;
         }
-        // Bug 反馈检测: 用户消息以"bug:"开头时记录到 bug 面板
-        if (msg.toLowerCase().startsWith("bug:") || msg.startsWith("BUG:") || msg.startsWith("反馈")) {
-            try {
-                await api("/bugs/report", { method: "POST", body: { content: msg } });
-                appendAIMessage("assistant", "🐛 已收到你的 Bug 反馈, 感谢! 开发团队会尽快处理。");
-            } catch (e) { /* 记录失败不阻塞对话 */ }
+        // Bug 反馈检测 + 冷却 (60秒一次) — 复用上方 isBugReport
+        if (isBugReport) {
+            const now = Date.now();
+            if (!state.lastBugReportTs || now - state.lastBugReportTs >= 60000) {
+                state.lastBugReportTs = now;
+                try {
+                    await api("/bugs/report", { method: "POST", body: { content: msg } });
+                    appendAIMessage("assistant", "🐛 已收到你的 Bug 反馈, 感谢! 开发团队会尽快处理。");
+                } catch (e) { /* 记录失败不阻塞 */ }
+            } else {
+                const remain = Math.ceil((60000 - (now - state.lastBugReportTs)) / 1000);
+                appendAIMessage("assistant", `⏳ 反馈冷却中, 请 ${remain} 秒后再试`);
+                return;
+            }
         }
         try {
             const res = await api("/ai/chat", {
@@ -8047,6 +8089,9 @@
                     btn.style.opacity = "0.6";
                 }
                 if (status) status.textContent = res.message || "签到可得 20 积分";
+                // 同步仪表盘积分
+                const statEl = $("statCredits");
+                if (statEl && res.credits !== undefined) statEl.textContent = res.credits;
             }
         } catch (e) {
             toastError("签到失败");

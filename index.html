@@ -168,8 +168,14 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
 }
 .boot-logo {
     font-family: var(--font-mono);
-    font-size: 9px;
-    overflow-x: hidden;
+    font-size: 22px;
+    line-height: 1.25;
+    margin: 0 0 16px 0;
+    letter-spacing: 0;
+    white-space: pre;
+    transform: scale(1.2);
+    transform-origin: center;
+    overflow: hidden;
     max-width: 100%;
     line-height: 1.25;
     margin: 0 0 16px 0;
@@ -1654,7 +1660,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
 @media (max-width: 480px) {
     .stats-grid { grid-template-columns: 1fr; }
     .form-row { flex-direction: column; }
-    .boot-logo { font-size: 8px; }
+    .boot-logo { font-size: 22px; transform: scale(0.42); transform-origin: top center; }
     .captcha-wrap { flex-direction: column; align-items: stretch; }
     .captcha-img-box { width: 100%; min-height: 56px; height: 56px; }
     .auth-card { padding: 24px 20px; }
@@ -2101,6 +2107,13 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
                         </div>
                     </div>
                     <button class="btn btn-primary btn-sm" id="btnAiCheckin">签到 +20</button>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon yellow"><i class="fas fa-coins"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="statCredits">0</div>
+                        <div class="stat-label">我的积分</div>
+                    </div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon blue"><i class="fas fa-th-large"></i></div>
@@ -3449,7 +3462,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
             <div class="ai-header" style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid var(--border-default);flex-shrink:0;">
                 <div>
                     <div style="font-weight:600;font-size:15px;">智能助手</div>
-                    <div style="font-size:11px;color:var(--text-tertiary);">对话 1 积分/次 · 支持上下文阅读</div>
+                    <div style="font-size:11px;color:var(--text-tertiary);">对话 1 积分/次 · 以「反馈」开头可免费发 Bug 反馈</div>
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;">
                     <button class="btn btn-ghost btn-sm" id="btnAiClear" title="清空对话"><i class="fas fa-broom"></i> 清空</button>
