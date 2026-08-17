@@ -1715,7 +1715,7 @@ body.modal-open { overflow: hidden; }
 
 /* ═══ 创建机器人: 专业步骤条 ═══ */
 .bot-create-step {
-    background: #161b22; border: 1px solid #30363d; border-radius: 10px;
+    background: var(--bg-card); border: 1px solid var(--border-default); border-radius: 10px;
     padding: 20px 22px;
     display: flex; flex-direction: column;
 }
@@ -1725,10 +1725,10 @@ body.modal-open { overflow: hidden; }
 }
 .bc-step-num {
     width: 32px; height: 32px; border-radius: 50%;
-    background: #21262d; color: #7d8590;
+    background: var(--bg-hover); color: var(--text-tertiary);
     display: flex; align-items: center; justify-content: center;
     font-weight: 700; font-size: 14px;
-    border: 2px solid #30363d;
+    border: 2px solid var(--border-default);
     transition: all .3s;
 }
 .bc-step-ind.active .bc-step-num {
@@ -1738,20 +1738,20 @@ body.modal-open { overflow: hidden; }
 .bc-step-ind.done .bc-step-num {
     background: #238636; color: #fff; border-color: #3fb950;
 }
-.bc-step-t { font-size: 11px; color: #7d8590; }
-.bc-step-ind.active .bc-step-t { color: #e6edf3; font-weight: 600; }
+.bc-step-t { font-size: 11px; color: var(--text-tertiary); }
+.bc-step-ind.active .bc-step-t { color: var(--text-primary); font-weight: 600; }
 .bc-step-line {
-    flex: 1; height: 2px; background: #30363d;
+    flex: 1; height: 2px; background: var(--border-default);
     margin: 15px 6px 0; min-width: 20px;
     border-radius: 1px;
 }
 .bc-step-line.done { background: #3fb950; }
 .bc-title {
     font-weight: 600; font-size: 15px; margin-bottom: 6px;
-    color: #e6edf3; display: flex; align-items: center; gap: 8px;
+    color: var(--text-primary); display: flex; align-items: center; gap: 8px;
 }
 .bc-title i { color: #58a6ff; }
-.bc-desc { font-size: 13px; color: #7d8590; line-height: 1.7; }
+.bc-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
 .bc-time-hint {
     font-size: 12px; color: #d29922; margin-top: 8px;
     background: #d2992214; border: 1px solid #d2992233;
