@@ -1,0 +1,156 @@
+# FA 接入点 (FateArk) 逆向工程报告 — 最终版
+
+> 版本调研: 2026-08-18 | 逆向来源: ToolDelta main 分支 (1.3.7, 2026-08-11 最新提交)
+> 还原度: **~80%** (gRPC API 层 100% 还原, 二进制内部为行为推导)
+> 版本结论: GitHub release 最新为 1.3.2 (2025-10-09), main 分支 1.3.7 (2026-08-11) **比 release 新 10 个月, 为最新版**
+
+---
+
+## 〇、版本调研结论 (多源对比)
+
+| 来源 | 版本 | 更新日期 | 结论 |
+|---|---|---|---|
+| ToolDelta GitHub release | 1.3.2 | 2025-10-09 | 旧 (落后 main 10 个月) |
+| **ToolDelta main 分支** | **1.3.7** | **2026-08-11** | ✅ **最新, 本次逆向对象** |
+| 本地 ToolDelta-main | 1.3.6 | - | 接入点代码与 1.3.7 **完全一致** (md5 相同) |
+| GitHub 搜索 "FateArk" | 无公开仓库 | - | FA 二进制闭源, 无官方源码泄露 |
+| OmineDev/fa | Finite Automata | 2025-01-06 | ⚠️ 同名但不是接入点 (是 SNBT 解析器) |
+
+**结论: FA 接入点的最新可逆向素材就是 ToolDelta main 分支 (1.3.7) 里的 fateark_* 源码, 已是全网最新。**
+
+---
+
+## 一、什么是 FA 接入点
+
+**FateArk (命运方舟, FA)** = 网易租赁服机器人接入方案, 由**闭源 Go 二进制** + **gRPC 接口**组成。
+
+**核心原理**: FateArk 二进制负责"弹射"进租赁服 (RakNet 握手 + 网易 auth-v2 认证 + 反检测), 然后通过 **gRPC insecure_channel** 把游戏能力暴露给本地 Python 框架。
+
+**特点**: 纯本地 gRPC (延迟低) / 支持间接模式 (跨机器远程连接) / 双通道数据包 (JSON + 字节流)
+
+---
+
+## 二、架构图
+
+```
+┌─────────────┐  gRPC (insecure)   ┌──────────────────┐   RakNet/UDP   ┌──────────┐
+│  ToolDelta  │ ──────────────────▶ │  FateArk 二进制   │ ─────────────▶ │ 网易租赁服 │
+│  (Python)   │  localhost:空闲端口  │  (Go, 闭源)       │   协议认证      │          │
+└─────────────┘                     └──────────────────┘                └──────────┘
+     1. subprocess 启动二进制 (参数: -p 端口 [-s 二次认证代理])
+     2. gRPC connect → Ping 探活 (各重试20次/0.5s)
+     3. login(auth_server, fbToken, server_code, server_password)
+     4. set_listen_packets(包ID集合) → 普通包+字节包分别注册
+     5. 三条流: read_output (ListenFateArk) / read_packet (ListenPackets) / read_bytes_packet
+     6. 命令: WO/WS/Player/AI 四种身份, 各带 OmitResponse/WithResponse
+     7. wait_dead() 阻塞直到崩溃 → 返回原因
+```
+
+---
+
+## 三、启动流程 (逐步还原, 关键行号)
+
+```python
+# fateark_access_point.py
+free_port = urlmethod.get_free_port(19200)          # 动态端口 19200 起
+self.start_fateark_proc(free_port)                  # subprocess: [二进制, "-p", str(port)] (+可选 "-s" 代理)
+fateark_core.connect(f"localhost:{free_port}")      # grpc.insecure_channel + 5个Stub, 重试20次
+fateark_core.ping()                                 # PingRequest → PingResponse.success, 重试20次
+status, _, err_msg = fateark_core.login(
+    self.auth_server, self.fbToken, str(self.serverNumber), self.serverPassword)
+# status!=0 → SystemError(f"FateArk 无法通过我的世界网络登录到租赁服: {err_msg}")
+fateark_core.set_listen_packets(set(self.need_listen_packets))   # 注册包监听
+# 三线程: _start_message_show_thread (read_output) / _packets_handler_thread (read_packet)
+#         / _bytes_packets_handler_thread (read_bytes_packet)
+fateark_core.wait_dead()                            # 阻塞, 崩溃时返回原因
+```
+
+**间接模式** (fateark_access_point_indirect.py): 不启动二进制, 直接 `connect(远程地址)` (默认 `tcp://127.0.0.1:24020`), 其余流程相同。
+
+---
+
+## 四、gRPC API 完整清单 (proto3 全还原)
+
+### 4.1 FateReversalerService (核心)
+```protobuf
+rpc NewFateReversaler(NewFateReversalerRequest) returns (GeneralResponse);
+rpc WaitDead(WaitDeadRequest) returns (stream DeadReason);
+rpc Ping(PingRequest) returns (PingResponse);
+
+message NewFateReversalerRequest {
+  string auth_server = 1;      // 认证服务器 (默认 https://api.fastbuilder.pro)
+  string user_name = 2;        // 留空 (用 token)
+  string user_password = 3;    // 留空
+  string user_token = 4;       // fbToken
+  string server_code = 5;      // 租赁服号
+  string server_password = 6;  // 租赁服密码
+}
+```
+
+### 4.2 CommandService (4 种命令身份)
+```protobuf
+rpc SendWOCommand(cmd)              // 设置命令 (最高权限)
+rpc SendWSCommand(cmd)              // WebSocket 命令
+rpc SendPlayerCommand(cmd)          // 玩家命令 (机器人身份)
+rpc SendAICommand(cmd)              // AI 魔法命令
+rpc SendWSCommandWithResponse(cmd, timeout)      // 回包: GeneralResponse.payload=JSON CommandOutput
+rpc SendPlayerCommandWithResponse(cmd, timeout)  // timeout 超时 → error_msg=="timeout"
+rpc SendAICommandWithResponse(cmd, timeout)
+```
+
+### 4.3 ListenerService (监听)
+```protobuf
+rpc ListenFateArk(空)       returns (stream Output{msg_type, msg, err_msg});   // msg_type=="Crash"=崩溃
+rpc ListenPackets(空)       returns (stream Packet{id, payload(JSON)});
+rpc ListenBytesPackets(空)  returns (stream BytesPacket{id, payload(bytes)});
+rpc ListenTypedPacket(packet_id)      → 注册普通包
+rpc ListenTypedBytesPacket(packet_id) → 注册字节包
+rpc ListenPlayerChange(空)  returns (stream PlayerAction);
+rpc ListenChat(空)          returns (stream Chat);
+rpc ListenCommandBlock(name) returns (stream Chat);
+```
+
+### 4.4 PlayerKitService (30+ 属性/权限)
+```protobuf
+// 在线玩家: GetAllOnlinePlayers → JSON ["uuid",...]; GetPlayerByName/ByUUID → uuid; ReleaseBindPlayer
+// 基本信息: Name/EntityUniqueID/LoginTime/PlatformChatID/BuildPlatform/SkinID/DeviceID/EntityRuntimeID/EntityMetadata/IsOP/Online
+// 能力 (Get+Set 对): CanBuild/CanDig/CanDoorsAndSwitches/CanOpenContainers/CanAttackPlayers/CanAttackMobs/CanOperatorCommands/CanTeleport
+// 状态: StatusInvulnerable/StatusFlying/StatusMayFly
+// 交互: SendPlayerChat/RawChat/Title/ActionBar/InterceptPlayerJustNextInput(uuid, retriever_id) ★拦截玩家输入
+```
+
+### 4.5 UtilsService
+```protobuf
+rpc SendPacket(packet_id, json_str)   // 发原始数据包 ★
+rpc GetPacketNameIDMapping            // 包名↔ID 映射
+rpc GetClientMaintainedBotBasicInfo   // {BotName, BotRuntimeID, ...}
+rpc GetClientMaintainedExtendInfo     // 扩展信息
+```
+
+---
+
+## 五、依赖与端口
+
+| 项目 | 值 |
+|---|---|
+| Python 依赖 | grpcio + protobuf + requests |
+| gRPC 端口 | 动态 19200 起 |
+| 间接模式默认 | tcp://127.0.0.1:24020 |
+| 二进制命名 | FateArk_windows_amd64.exe / FateArk_linux_amd64 / FateArk_android_aarch64 (Termux) |
+| 下载源 | ToolDelta repo `require_files.json` 的 FateArk 条目 (版本跟随 commit hash) |
+| 认证服务器 | https://api.fastbuilder.pro (默认, `-s` 参数可加二次认证代理) |
+
+---
+
+## 六、未还原部分 (诚实声明)
+
+1. FateArk Go 二进制内部 (闭源): RakNet 细节 / auth-v2 认证链 / 反检测 — 行为推导
+2. `-s secondary-auth-proxy` 完整协议 (推测认证链代签)
+3. CopeChallenge 验证码挑战算法 (二进制内部处理)
+
+## 七、与 CrystalGate 可复用点
+
+- 命令回包 retriever 模式 = CrystalGate v1.8.4 CMD_WAIT 原型
+- `GetPlayerCanOperatorCommands(uuid)` 直接查 OP (比解析 UpdateAbilities 包更可靠)
+- `SendPacket(packet_id, json)` 可用于高级交互 (容器/交易)
+- `InterceptPlayerJustNextInput` CrystalGate 没有的能力
