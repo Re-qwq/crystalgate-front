@@ -1,0 +1,766 @@
+{
+ "cols": 16,
+ "tile": 16,
+ "blocks": {
+  "minecraft:acacia_leaves": {
+   "atlas": 0,
+   "shape": "full",
+   "color": "#6e963c"
+  },
+  "minecraft:acacia_log": {
+   "atlas": 1,
+   "shape": "full",
+   "color": "#785434"
+  },
+  "minecraft:acacia_planks": {
+   "atlas": 2,
+   "shape": "full",
+   "color": "#a86a4a"
+  },
+  "minecraft:barrel": {
+   "atlas": 3,
+   "shape": "full",
+   "color": "#a88446"
+  },
+  "minecraft:bedrock": {
+   "atlas": 4,
+   "shape": "full",
+   "color": "#323232"
+  },
+  "minecraft:birch_leaves": {
+   "atlas": 5,
+   "shape": "full",
+   "color": "#78a046"
+  },
+  "minecraft:birch_log": {
+   "atlas": 6,
+   "shape": "full",
+   "color": "#c8bea0"
+  },
+  "minecraft:birch_planks": {
+   "atlas": 7,
+   "shape": "full",
+   "color": "#c4b48e"
+  },
+  "minecraft:black_concrete": {
+   "atlas": 8,
+   "shape": "full",
+   "color": "#080a0f"
+  },
+  "minecraft:black_stained_glass": {
+   "atlas": 9,
+   "shape": "full",
+   "color": "#323237"
+  },
+  "minecraft:black_terracotta": {
+   "atlas": 10,
+   "shape": "full",
+   "color": "#463732"
+  },
+  "minecraft:black_wool": {
+   "atlas": 11,
+   "shape": "full",
+   "color": "#141519"
+  },
+  "minecraft:blue_concrete": {
+   "atlas": 12,
+   "shape": "full",
+   "color": "#2d2f8f"
+  },
+  "minecraft:blue_ice": {
+   "atlas": 13,
+   "shape": "full",
+   "color": "#648ce6"
+  },
+  "minecraft:blue_stained_glass": {
+   "atlas": 14,
+   "shape": "full",
+   "color": "#5064d2"
+  },
+  "minecraft:blue_terracotta": {
+   "atlas": 15,
+   "shape": "full",
+   "color": "#5a5a82"
+  },
+  "minecraft:blue_wool": {
+   "atlas": 16,
+   "shape": "full",
+   "color": "#35399d"
+  },
+  "minecraft:bookshelf": {
+   "atlas": 17,
+   "shape": "full",
+   "color": "#a2824f"
+  },
+  "minecraft:bricks": {
+   "atlas": 18,
+   "shape": "full",
+   "color": "#965e58"
+  },
+  "minecraft:brown_concrete": {
+   "atlas": 19,
+   "shape": "full",
+   "color": "#603c20"
+  },
+  "minecraft:brown_stained_glass": {
+   "atlas": 20,
+   "shape": "full",
+   "color": "#825a3c"
+  },
+  "minecraft:brown_terracotta": {
+   "atlas": 21,
+   "shape": "full",
+   "color": "#6e5037"
+  },
+  "minecraft:brown_wool": {
+   "atlas": 22,
+   "shape": "full",
+   "color": "#724728"
+  },
+  "minecraft:chest": {
+   "atlas": 23,
+   "shape": "full",
+   "color": "#a88446"
+  },
+  "minecraft:clay": {
+   "atlas": 24,
+   "shape": "full",
+   "color": "#a0a8b4"
+  },
+  "minecraft:coal_block": {
+   "atlas": 25,
+   "shape": "full",
+   "color": "#232323"
+  },
+  "minecraft:coal_ore": {
+   "atlas": 26,
+   "shape": "full",
+   "color": "#787878"
+  },
+  "minecraft:cobblestone": {
+   "atlas": 27,
+   "shape": "full",
+   "color": "#737373"
+  },
+  "minecraft:command_block": {
+   "atlas": 28,
+   "shape": "full",
+   "color": "#c88c3c"
+  },
+  "minecraft:copper_block": {
+   "atlas": 29,
+   "shape": "full",
+   "color": "#be7454"
+  },
+  "minecraft:copper_ore": {
+   "atlas": 30,
+   "shape": "full",
+   "color": "#807a70"
+  },
+  "minecraft:crafting_table": {
+   "atlas": 31,
+   "shape": "full",
+   "color": "#a2824f"
+  },
+  "minecraft:cyan_concrete": {
+   "atlas": 32,
+   "shape": "full",
+   "color": "#157788"
+  },
+  "minecraft:cyan_stained_glass": {
+   "atlas": 33,
+   "shape": "full",
+   "color": "#5abebe"
+  },
+  "minecraft:cyan_terracotta": {
+   "atlas": 34,
+   "shape": "full",
+   "color": "#5a787d"
+  },
+  "minecraft:cyan_wool": {
+   "atlas": 35,
+   "shape": "full",
+   "color": "#158991"
+  },
+  "minecraft:dark_oak_leaves": {
+   "atlas": 36,
+   "shape": "full",
+   "color": "#3c642d"
+  },
+  "minecraft:dark_oak_log": {
+   "atlas": 37,
+   "shape": "full",
+   "color": "#382c1e"
+  },
+  "minecraft:dark_oak_planks": {
+   "atlas": 38,
+   "shape": "full",
+   "color": "#4c3a28"
+  },
+  "minecraft:diamond_block": {
+   "atlas": 39,
+   "shape": "full",
+   "color": "#64e2d5"
+  },
+  "minecraft:diamond_ore": {
+   "atlas": 40,
+   "shape": "full",
+   "color": "#7d8782"
+  },
+  "minecraft:dirt": {
+   "atlas": 41,
+   "shape": "full",
+   "color": "#866043"
+  },
+  "minecraft:emerald_block": {
+   "atlas": 42,
+   "shape": "full",
+   "color": "#41cd70"
+  },
+  "minecraft:emerald_ore": {
+   "atlas": 43,
+   "shape": "full",
+   "color": "#7d8782"
+  },
+  "minecraft:end_stone": {
+   "atlas": 44,
+   "shape": "full",
+   "color": "#dcdcaa"
+  },
+  "minecraft:furnace": {
+   "atlas": 45,
+   "shape": "full",
+   "color": "#828282"
+  },
+  "minecraft:glass": {
+   "atlas": 46,
+   "shape": "full",
+   "color": "#dcebf0"
+  },
+  "minecraft:glass_pane": {
+   "atlas": 47,
+   "shape": "thin",
+   "color": "#dcebf0"
+  },
+  "minecraft:glowstone": {
+   "atlas": 48,
+   "shape": "full",
+   "color": "#aa8250"
+  },
+  "minecraft:gold_block": {
+   "atlas": 49,
+   "shape": "full",
+   "color": "#f4d034"
+  },
+  "minecraft:gold_ore": {
+   "atlas": 50,
+   "shape": "full",
+   "color": "#878070"
+  },
+  "minecraft:grass": {
+   "atlas": 51,
+   "shape": "cross",
+   "color": "#6aaa40"
+  },
+  "minecraft:grass_block": {
+   "atlas": 52,
+   "shape": "cross",
+   "color": "#6aaa40"
+  },
+  "minecraft:grass_block_top": {
+   "atlas": 53,
+   "shape": "cross",
+   "color": "#6aaa40"
+  },
+  "minecraft:gravel": {
+   "atlas": 54,
+   "shape": "full",
+   "color": "#827d7a"
+  },
+  "minecraft:gray_concrete": {
+   "atlas": 55,
+   "shape": "full",
+   "color": "#36393e"
+  },
+  "minecraft:gray_stained_glass": {
+   "atlas": 56,
+   "shape": "full",
+   "color": "#5a5a5f"
+  },
+  "minecraft:gray_terracotta": {
+   "atlas": 57,
+   "shape": "full",
+   "color": "#645a5a"
+  },
+  "minecraft:gray_wool": {
+   "atlas": 58,
+   "shape": "full",
+   "color": "#3e4448"
+  },
+  "minecraft:green_concrete": {
+   "atlas": 59,
+   "shape": "full",
+   "color": "#495b24"
+  },
+  "minecraft:green_stained_glass": {
+   "atlas": 60,
+   "shape": "full",
+   "color": "#5aaa5a"
+  },
+  "minecraft:green_terracotta": {
+   "atlas": 61,
+   "shape": "full",
+   "color": "#647346"
+  },
+  "minecraft:green_wool": {
+   "atlas": 62,
+   "shape": "full",
+   "color": "#546d1b"
+  },
+  "minecraft:honey_block": {
+   "atlas": 63,
+   "shape": "full",
+   "color": "#ffa028"
+  },
+  "minecraft:ice": {
+   "atlas": 64,
+   "shape": "full",
+   "color": "#96b4dc"
+  },
+  "minecraft:iron_block": {
+   "atlas": 65,
+   "shape": "full",
+   "color": "#dcdcdc"
+  },
+  "minecraft:iron_ore": {
+   "atlas": 66,
+   "shape": "full",
+   "color": "#827d76"
+  },
+  "minecraft:jack_o_lantern": {
+   "atlas": 67,
+   "shape": "torch",
+   "color": "#e68c1e"
+  },
+  "minecraft:jukebox": {
+   "atlas": 68,
+   "shape": "full",
+   "color": "#6e5037"
+  },
+  "minecraft:jungle_leaves": {
+   "atlas": 69,
+   "shape": "full",
+   "color": "#558c37"
+  },
+  "minecraft:jungle_log": {
+   "atlas": 70,
+   "shape": "full",
+   "color": "#5a4830"
+  },
+  "minecraft:jungle_planks": {
+   "atlas": 71,
+   "shape": "full",
+   "color": "#9e7a52"
+  },
+  "minecraft:lapis_block": {
+   "atlas": 72,
+   "shape": "full",
+   "color": "#284cac"
+  },
+  "minecraft:lapis_ore": {
+   "atlas": 73,
+   "shape": "full",
+   "color": "#78828c"
+  },
+  "minecraft:lava": {
+   "atlas": 74,
+   "shape": "full",
+   "color": "#e25822"
+  },
+  "minecraft:light_block": {
+   "atlas": 75,
+   "shape": "full",
+   "color": "#fff0c8"
+  },
+  "minecraft:light_blue_concrete": {
+   "atlas": 76,
+   "shape": "full",
+   "color": "#2489c7"
+  },
+  "minecraft:light_blue_stained_glass": {
+   "atlas": 77,
+   "shape": "full",
+   "color": "#64a0e6"
+  },
+  "minecraft:light_blue_terracotta": {
+   "atlas": 78,
+   "shape": "full",
+   "color": "#6e7896"
+  },
+  "minecraft:light_blue_wool": {
+   "atlas": 79,
+   "shape": "full",
+   "color": "#3aafd9"
+  },
+  "minecraft:light_gray_concrete": {
+   "atlas": 80,
+   "shape": "full",
+   "color": "#7d7d73"
+  },
+  "minecraft:light_gray_stained_glass": {
+   "atlas": 81,
+   "shape": "full",
+   "color": "#969696"
+  },
+  "minecraft:light_gray_terracotta": {
+   "atlas": 82,
+   "shape": "full",
+   "color": "#8c827d"
+  },
+  "minecraft:light_gray_wool": {
+   "atlas": 83,
+   "shape": "full",
+   "color": "#8e8e86"
+  },
+  "minecraft:lime_concrete": {
+   "atlas": 84,
+   "shape": "full",
+   "color": "#5ea918"
+  },
+  "minecraft:lime_stained_glass": {
+   "atlas": 85,
+   "shape": "full",
+   "color": "#8cdc50"
+  },
+  "minecraft:lime_terracotta": {
+   "atlas": 86,
+   "shape": "full",
+   "color": "#829650"
+  },
+  "minecraft:lime_wool": {
+   "atlas": 87,
+   "shape": "full",
+   "color": "#70b919"
+  },
+  "minecraft:magenta_concrete": {
+   "atlas": 88,
+   "shape": "full",
+   "color": "#a9309f"
+  },
+  "minecraft:magenta_stained_glass": {
+   "atlas": 89,
+   "shape": "full",
+   "color": "#c85abe"
+  },
+  "minecraft:magenta_terracotta": {
+   "atlas": 90,
+   "shape": "full",
+   "color": "#96465a"
+  },
+  "minecraft:magenta_wool": {
+   "atlas": 91,
+   "shape": "full",
+   "color": "#bd44b4"
+  },
+  "minecraft:magma_block": {
+   "atlas": 92,
+   "shape": "full",
+   "color": "#c85a1e"
+  },
+  "minecraft:melon": {
+   "atlas": 93,
+   "shape": "full",
+   "color": "#78aa3c"
+  },
+  "minecraft:mossy_stone_bricks": {
+   "atlas": 94,
+   "shape": "full",
+   "color": "#768064"
+  },
+  "minecraft:mushroom_block": {
+   "atlas": 95,
+   "shape": "cross",
+   "color": "#b49682"
+  },
+  "minecraft:mushroom_stem": {
+   "atlas": 96,
+   "shape": "cross",
+   "color": "#dcd2be"
+  },
+  "minecraft:mycelium": {
+   "atlas": 97,
+   "shape": "full",
+   "color": "#826e78"
+  },
+  "minecraft:nether_bricks": {
+   "atlas": 98,
+   "shape": "full",
+   "color": "#37262a"
+  },
+  "minecraft:netherite_block": {
+   "atlas": 99,
+   "shape": "full",
+   "color": "#46403e"
+  },
+  "minecraft:netherrack": {
+   "atlas": 100,
+   "shape": "full",
+   "color": "#642828"
+  },
+  "minecraft:note_block": {
+   "atlas": 101,
+   "shape": "full",
+   "color": "#786446"
+  },
+  "minecraft:oak_leaves": {
+   "atlas": 102,
+   "shape": "full",
+   "color": "#5a8c32"
+  },
+  "minecraft:oak_log": {
+   "atlas": 103,
+   "shape": "full",
+   "color": "#665132"
+  },
+  "minecraft:oak_planks": {
+   "atlas": 104,
+   "shape": "full",
+   "color": "#a2824f"
+  },
+  "minecraft:obsidian": {
+   "atlas": 105,
+   "shape": "full",
+   "color": "#201a2e"
+  },
+  "minecraft:orange_concrete": {
+   "atlas": 106,
+   "shape": "full",
+   "color": "#e06101"
+  },
+  "minecraft:orange_stained_glass": {
+   "atlas": 107,
+   "shape": "full",
+   "color": "#eb8c50"
+  },
+  "minecraft:orange_terracotta": {
+   "atlas": 108,
+   "shape": "full",
+   "color": "#a05a32"
+  },
+  "minecraft:orange_wool": {
+   "atlas": 109,
+   "shape": "full",
+   "color": "#f07613"
+  },
+  "minecraft:packed_ice": {
+   "atlas": 110,
+   "shape": "full",
+   "color": "#82a0d2"
+  },
+  "minecraft:pink_concrete": {
+   "atlas": 111,
+   "shape": "full",
+   "color": "#d6658f"
+  },
+  "minecraft:pink_stained_glass": {
+   "atlas": 112,
+   "shape": "full",
+   "color": "#e68caa"
+  },
+  "minecraft:pink_terracotta": {
+   "atlas": 113,
+   "shape": "full",
+   "color": "#b4646e"
+  },
+  "minecraft:pink_wool": {
+   "atlas": 114,
+   "shape": "full",
+   "color": "#ed8dac"
+  },
+  "minecraft:podzol": {
+   "atlas": 115,
+   "shape": "full",
+   "color": "#6e5032"
+  },
+  "minecraft:pumpkin": {
+   "atlas": 116,
+   "shape": "full",
+   "color": "#e68c1e"
+  },
+  "minecraft:purple_concrete": {
+   "atlas": 117,
+   "shape": "full",
+   "color": "#641f9c"
+  },
+  "minecraft:purple_stained_glass": {
+   "atlas": 118,
+   "shape": "full",
+   "color": "#8c5ac8"
+  },
+  "minecraft:purple_terracotta": {
+   "atlas": 119,
+   "shape": "full",
+   "color": "#78506e"
+  },
+  "minecraft:purple_wool": {
+   "atlas": 120,
+   "shape": "full",
+   "color": "#792aac"
+  },
+  "minecraft:purpur_block": {
+   "atlas": 121,
+   "shape": "full",
+   "color": "#aa82aa"
+  },
+  "minecraft:quartz_block": {
+   "atlas": 122,
+   "shape": "full",
+   "color": "#ece4da"
+  },
+  "minecraft:red_concrete": {
+   "atlas": 123,
+   "shape": "full",
+   "color": "#8e2020"
+  },
+  "minecraft:red_stained_glass": {
+   "atlas": 124,
+   "shape": "full",
+   "color": "#d25a50"
+  },
+  "minecraft:red_terracotta": {
+   "atlas": 125,
+   "shape": "full",
+   "color": "#964637"
+  },
+  "minecraft:red_wool": {
+   "atlas": 126,
+   "shape": "full",
+   "color": "#a12722"
+  },
+  "minecraft:redstone_block": {
+   "atlas": 127,
+   "shape": "full",
+   "color": "#c4281c"
+  },
+  "minecraft:redstone_ore": {
+   "atlas": 128,
+   "shape": "full",
+   "color": "#7d7878"
+  },
+  "minecraft:sand": {
+   "atlas": 129,
+   "shape": "full",
+   "color": "#dbcfa3"
+  },
+  "minecraft:sea_lantern": {
+   "atlas": 130,
+   "shape": "torch",
+   "color": "#bedcd2"
+  },
+  "minecraft:slime_block": {
+   "atlas": 131,
+   "shape": "full",
+   "color": "#6ed26e"
+  },
+  "minecraft:snow_block": {
+   "atlas": 132,
+   "shape": "slab",
+   "color": "#f5fafa"
+  },
+  "minecraft:soul_sand": {
+   "atlas": 133,
+   "shape": "full",
+   "color": "#503e30"
+  },
+  "minecraft:sponge": {
+   "atlas": 134,
+   "shape": "full",
+   "color": "#bebe50"
+  },
+  "minecraft:spruce_leaves": {
+   "atlas": 135,
+   "shape": "full",
+   "color": "#466e37"
+  },
+  "minecraft:spruce_log": {
+   "atlas": 136,
+   "shape": "full",
+   "color": "#483a26"
+  },
+  "minecraft:spruce_planks": {
+   "atlas": 137,
+   "shape": "full",
+   "color": "#78623f"
+  },
+  "minecraft:stone": {
+   "atlas": 138,
+   "shape": "full",
+   "color": "#7d7d7d"
+  },
+  "minecraft:stone_bricks": {
+   "atlas": 139,
+   "shape": "full",
+   "color": "#7d7d7d"
+  },
+  "minecraft:structure_block": {
+   "atlas": 140,
+   "shape": "full",
+   "color": "#9696a0"
+  },
+  "minecraft:terracotta": {
+   "atlas": 141,
+   "shape": "full",
+   "color": "#965a3c"
+  },
+  "minecraft:tnt": {
+   "atlas": 142,
+   "shape": "full",
+   "color": "#c8281e"
+  },
+  "minecraft:water": {
+   "atlas": 143,
+   "shape": "full",
+   "color": "#3e74db"
+  },
+  "minecraft:white_concrete": {
+   "atlas": 144,
+   "shape": "full",
+   "color": "#d0d0d0"
+  },
+  "minecraft:white_stained_glass": {
+   "atlas": 145,
+   "shape": "full",
+   "color": "#ebebeb"
+  },
+  "minecraft:white_terracotta": {
+   "atlas": 146,
+   "shape": "full",
+   "color": "#d2af87"
+  },
+  "minecraft:white_wool": {
+   "atlas": 147,
+   "shape": "full",
+   "color": "#eaeaea"
+  },
+  "minecraft:yellow_concrete": {
+   "atlas": 148,
+   "shape": "full",
+   "color": "#f0af15"
+  },
+  "minecraft:yellow_stained_glass": {
+   "atlas": 149,
+   "shape": "full",
+   "color": "#f0dc5a"
+  },
+  "minecraft:yellow_terracotta": {
+   "atlas": 150,
+   "shape": "full",
+   "color": "#be9646"
+  },
+  "minecraft:yellow_wool": {
+   "atlas": 151,
+   "shape": "full",
+   "color": "#f8c627"
+  }
+ }
+}
