@@ -2026,6 +2026,10 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
                     <i class="fas fa-user-plus nav-icon"></i>
                     <span class="nav-label">注册游戏账号</span>
                 </div>
+                <div class="nav-item" data-view="file-parser" id="navFileParser">
+                    <i class="fas fa-file-import nav-icon"></i>
+                    <span class="nav-label">文件解析器</span>
+                </div>
                 <div class="nav-item" data-view="tutorial" id="navTutorial">
                     <i class="fas fa-book-open nav-icon"></i>
                     <span class="nav-label">教程</span>
@@ -2433,6 +2437,32 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
                                     </div>
                                     <div style="font-size:12px;color:var(--text-tertiary);">状态: <span style="color:#22c55e;font-weight:600;">已内置</span></div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- 游戏内导入白名单 (CrystalGate 专属) -->
+                        <div style="margin-top:20px;padding:16px;background:var(--bg-secondary);border-radius:8px;">
+                            <h4 style="margin:0 0 12px 0;font-size:14px;display:flex;align-items:center;gap:8px;">
+                                <i class="fas fa-user-shield" style="color:var(--accent);"></i>
+                                游戏内导入白名单
+                            </h4>
+                            <p style="font-size:12px;color:var(--text-tertiary);margin:0 0 12px 0;">
+                                只有白名单内的玩家才可以在游戏内输入"导入"弹出导入菜单 (仿 Retalcer 聊天栏菜单)。
+                            </p>
+                            <div class="form-group">
+                                <label class="form-label" for="importWhitelistInput">
+                                    <i class="fas fa-users"></i> 白名单玩家 (英文逗号分隔, 写玩家全名)
+                                </label>
+                                <textarea class="form-input mono" id="importWhitelistInput" rows="2"
+                                          placeholder="例如: 模事,模事2号,模事3号"></textarea>
+                                <div class="form-hint" style="font-size:11px;color:var(--text-tertiary);margin-top:4px;">
+                                    多个玩家用英文逗号 , 分隔; 留空 = 无玩家可在游戏内使用导入菜单。
+                                </div>
+                            </div>
+                            <div style="margin-top:8px;display:flex;gap:8px;">
+                                <button class="btn btn-primary btn-sm" id="btnSaveImportWhitelist">
+                                    <i class="fas fa-save"></i> 保存白名单
+                                </button>
                             </div>
                         </div>
                         </div>
@@ -3264,6 +3294,85 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
                 </div>
             </div>
         </section>
+        <section class="view" id="view-file-parser">
+            <div class="page-header">
+                <div>
+                    <div class="page-title"><i class="fas fa-file-import"></i> 文件解析器</div>
+                    <div class="page-subtitle">解析建筑文件, 查看 NBT / 命令方块 / 区块 / 尺寸 / 方块种类统计</div>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-secondary btn-sm" id="parserRefreshBtn">
+                        <i class="fas fa-sync-alt"></i> 刷新
+                    </button>
+                </div>
+            </div>
+
+            <!-- 上传区 -->
+            <div class="card" style="margin-bottom:20px;">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-cloud-upload-alt"></i> 上传建筑文件</div>
+                </div>
+                <div class="card-body">
+                    <div id="parserDropZone" style="border:2px dashed var(--border-default);border-radius:var(--radius-md);padding:32px 16px;text-align:center;cursor:pointer;color:var(--text-secondary);transition:border-color .2s;">
+                        <i class="fas fa-file-upload" style="font-size:32px;margin-bottom:8px;display:block;color:var(--text-tertiary);"></i>
+                        <div>点击选择或拖拽文件到此处</div>
+                        <div style="font-size:12px;margin-top:6px;color:var(--text-tertiary);">
+                            支持: mcstructure / schematic / bdx / litematic / mcworld / mcaddon / kbdx / fuhong / gangban / axiombp / bcf / tibi / bds / nexus_np / mianyang / covstructure / runaway / qingxu / timebuilder / nexus / construction / ibimport
+                        </div>
+                    </div>
+                    <input type="file" id="parserFileInput" style="display:none;">
+                    <div id="parserStatus" style="display:none;margin-top:12px;padding:10px 14px;border-radius:var(--radius-md);font-size:13px;"></div>
+                </div>
+            </div>
+
+            <!-- 统计概览 -->
+            <div class="stats-summary" id="parserStatsSummary" style="display:none;">
+                <div class="summary-item">
+                    <div class="summary-value" style="color:var(--color-primary);" id="parserStatBlocks">0</div>
+                    <div class="summary-label">方块总数</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" style="color:var(--color-info);" id="parserStatSize">0×0×0</div>
+                    <div class="summary-label">尺寸 W×H×L</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" style="color:var(--color-warning);" id="parserStatNbt">0</div>
+                    <div class="summary-label">NBT 数量</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" style="color:var(--color-success);" id="parserStatCmd">0</div>
+                    <div class="summary-label">命令方块数</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" style="color:var(--text-secondary);" id="parserStatChunk">0</div>
+                    <div class="summary-label">区块数</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" style="color:var(--color-danger);" id="parserStatTypes">0</div>
+                    <div class="summary-label">方块种类</div>
+                </div>
+            </div>
+
+            <!-- 结果详情 -->
+            <div class="card" id="parserResultCard" style="display:none;">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-list"></i> 解析结果 <span id="parserFileName" style="font-size:12px;color:var(--text-tertiary);margin-left:8px;"></span></div>
+                </div>
+                <div class="table-wrap" style="border:none;border-radius:0;">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>方块类型</th>
+                                <th>数量</th>
+                                <th>占比</th>
+                            </tr>
+                        </thead>
+                        <tbody id="parserTypeTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
         <section class="view" id="view-tutorial">
             <div class="page-header">
                 <div>
@@ -3981,6 +4090,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
 <script src="vendor/xterm/xterm.js?v=1.8.6"></script>
 <script src="js/creative-effects.js?v=1.8.6"></script>
 <script src="js/backend-config.js?v=1.8.6"></script>
-    <script src="js/v2app.js?v=1.8.6"></script>
+<script src="vendor/three/three.min.js?v=1.8.6"></script>
+<script src="vendor/three/OrbitControls.js?v=1.8.6"></script>
+<script src="js/v2app.js?v=1.8.6"></script>
+<script src="js/preview3d.js?v=1.8.6"></script>
 </body>
 </html>
