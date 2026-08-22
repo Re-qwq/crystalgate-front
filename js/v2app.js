@@ -823,7 +823,7 @@
     }
 
     function showQuickHelp() {
-        toastInfo('CrystalGate v1.8.6 - Minecraft Bedrock 机器人管理平台');
+        toastInfo('CrystalGate v1.8.7 - Minecraft Bedrock 机器人管理平台');
     }
 
     /** 4399 账号管理弹窗: 提取 sauth_json / 注册新账号 */
@@ -1466,6 +1466,9 @@
             case "tutorial":
                 // 教程为纯静态内容，无需加载数据
                 break;
+            case "file-parser":
+                loadFileParser();
+                break;
             case "admin-orders":
                 loadAdminOrders();
                 break;
@@ -1476,6 +1479,117 @@
                 loadUsersBalance();
                 break;
         }
+    }
+
+    async function loadFileParser() {
+        // 幂等初始化上传区事件
+        if (window.__parserInit) return;
+        window.__parserInit = true;
+
+        const dropZone = $("parserDropZone");
+        const fileInput = $("parserFileInput");
+        if (!dropZone || !fileInput) return;
+
+        dropZone.addEventListener("click", () => fileInput.click());
+        fileInput.addEventListener("change", (e) => {
+            if (e.target.files && e.target.files.length) {
+                handleParserFile(e.target.files[0]);
+                fileInput.value = "";
+            }
+        });
+        dropZone.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = "var(--color-primary)";
+        });
+        dropZone.addEventListener("dragleave", () => {
+            dropZone.style.borderColor = "var(--border-default)";
+        });
+        dropZone.addEventListener("drop", (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = "var(--border-default)";
+            if (e.dataTransfer.files && e.dataTransfer.files.length) {
+                handleParserFile(e.dataTransfer.files[0]);
+            }
+        });
+        const refreshBtn = $("parserRefreshBtn");
+        if (refreshBtn) {
+            refreshBtn.addEventListener("click", () => {
+                resetParserResult();
+                toastInfo("已重置, 请重新选择文件");
+            });
+        }
+        resetParserResult();
+    }
+
+    function resetParserResult() {
+        const summary = $("parserStatsSummary");
+        const card = $("parserResultCard");
+        const status = $("parserStatus");
+        if (summary) summary.style.display = "none";
+        if (card) card.style.display = "none";
+        if (status) status.style.display = "none";
+    }
+
+    async function handleParserFile(file) {
+        const status = $("parserStatus");
+        if (!status) return;
+        status.style.display = "block";
+        status.style.background = "var(--bg-hover)";
+        status.style.color = "var(--text-secondary)";
+        status.textContent = "正在解析: " + file.name + " ...";
+
+        const fd = new FormData();
+        fd.append("file", file);
+        try {
+            const data = await api("/api/parser/stats", { method: "POST", body: fd, timeout: 120000 });
+            renderParserResult(data, file.name);
+            status.style.display = "none";
+        } catch (err) {
+            status.style.background = "rgba(239,68,68,.12)";
+            status.style.color = "var(--color-danger)";
+            status.textContent = "解析失败: " + (extractApiMessage(err) || "请检查文件格式");
+        }
+    }
+
+    function renderParserResult(data, filename) {
+        const summary = $("parserStatsSummary");
+        if (summary) summary.style.display = "grid";
+        const blocks = $("parserStatBlocks");
+        if (blocks) blocks.textContent = (data.total_blocks || 0).toLocaleString();
+        const s = data.size || {};
+        const sizeEl = $("parserStatSize");
+        if (sizeEl) sizeEl.textContent = (s.width || 0) + "×" + (s.height || 0) + "×" + (s.length || 0);
+        const nbtEl = $("parserStatNbt");
+        if (nbtEl) nbtEl.textContent = data.nbt_count || 0;
+        const cmdEl = $("parserStatCmd");
+        if (cmdEl) cmdEl.textContent = data.command_block_count || 0;
+        const chunkEl = $("parserStatChunk");
+        if (chunkEl) chunkEl.textContent = data.chunk_count || 0;
+        const typesEl = $("parserStatTypes");
+        if (typesEl) typesEl.textContent = data.block_types_count || 0;
+        const fnEl = $("parserFileName");
+        if (fnEl) fnEl.textContent = "— " + filename + " [" + (data.format || "") + "]";
+
+        const tbody = $("parserTypeTableBody");
+        if (tbody) {
+            tbody.innerHTML = "";
+            const top = data.top_types || [];
+            if (!top.length) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-tertiary);">无数据</td></tr>';
+            } else {
+                top.forEach((t, i) => {
+                    const pct = data.total_blocks ? ((t.count / data.total_blocks) * 100).toFixed(1) : "0";
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = "<td>" + (i + 1) + "</td>" +
+                        '<td style="font-family:monospace;">' + escapeHtml(t.name) + "</td>" +
+                        "<td>" + Number(t.count).toLocaleString() + "</td>" +
+                        "<td>" + pct + "%</td>";
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+        const card = $("parserResultCard");
+        if (card) card.style.display = "block";
     }
 
     async function loadActivityLog() {
@@ -3013,8 +3127,10 @@
                 // 继续上次导入
                 state.importFile = state.lastImport;
                 appendTerminal(`继续导入: ${state.lastImport.file_name}`, "info");
-                appendTerminal("  [1] 确认导入  [2] 取消", "system");
-                state.menuMode = "import-confirm";
+                state.menuMode = "import-speed";
+                state.importSpeed = 500; // 默认
+                appendTerminal("── 导入速度 (每秒命令数, 100~3000) ──", "system");
+                appendTerminal("  直接输入数字 (最低100, 最高3000):", "info");
             } else {
                 state.menuMode = "import-search";
                 appendTerminal("→ 输入文件名关键词 (模糊搜索):", "info");
@@ -3035,8 +3151,10 @@
                     const f = files[0];
                     appendTerminal(`找到 1 个文件: ${f.name} (${(f.size/1024).toFixed(1)}KB)`, "info");
                     state.importFile = f;
-                    state.menuMode = "import-confirm";
-                    appendTerminal("  [1] 确认导入  [2] 取消", "system");
+                    state.menuMode = "import-speed";
+                    state.importSpeed = 500; // 默认
+                    appendTerminal("── 导入速度 (每秒命令数, 100~3000) ──", "system");
+                    appendTerminal("  直接输入数字 (最低100, 最高3000):", "info");
                 } else {
                     // 多匹配: 列出选项
                     appendTerminal(`── 找到 ${files.length} 个文件 ──`, "system");
@@ -3065,8 +3183,42 @@
             }
             const f = files[idx - 1];
             state.importFile = f;
-            state.menuMode = "import-confirm";
+            state.menuMode = "import-speed";
+            state.importSpeed = 500; // 默认
             appendTerminal(`选择: ${f.name}`, "info");
+            appendTerminal("── 导入速度 (每秒命令数, 100~3000) ──", "system");
+            appendTerminal("  直接输入数字 (最低100, 最高3000):", "info");
+            return;
+        }
+        if (state.menuMode === "import-speed") {
+            const f = state.importFile;
+            if (!f) { showMainMenu(); return; }
+            const v = parseInt(cmdTrim);
+            if (isNaN(v) || v < 100 || v > 3000) {
+                appendTerminal(`❌ 速度需在 100~3000 之间 (收到: "${cmdTrim}")`, "error");
+                appendTerminal("→ 输入速度 (100~3000 之间的数字):", "info");
+                return;
+            }
+            state.importSpeed = v;
+            state.menuMode = "import-merge";
+            state.importMerge = 0; // 默认不分组
+            appendTerminal(`导入速度: ${v}/秒`, "info");
+            appendTerminal("── 合并区块 (N×N, 0=全局合并) ──", "system");
+            appendTerminal("  直接输入数字 (0=全局合并, 1=1×1, 2=2×2, 4=4×4...):", "info");
+            return;
+        }
+        if (state.menuMode === "import-merge") {
+            const f = state.importFile;
+            if (!f) { showMainMenu(); return; }
+            const v = parseInt(cmdTrim);
+            if (isNaN(v) || v < 0 || v > 64) {
+                appendTerminal(`❌ 合并区块需在 0~64 之间 (收到: "${cmdTrim}")`, "error");
+                appendTerminal("→ 输入合并区块 (0=全局合并, 1~64):", "info");
+                return;
+            }
+            state.importMerge = v;
+            state.menuMode = "import-confirm";
+            appendTerminal(`合并区块: ${v > 0 ? v + '×' + v : '全局合并'}`, "info");
             appendTerminal("  [1] 确认导入  [2] 取消", "system");
             return;
         }
@@ -3081,7 +3233,7 @@
                 try {
                     const res = await api(`/bots/${state.currentBotId}/import`, {
                         method: "POST",
-                        body: { file_path: f.path, file_name: f.name },
+                        body: { file_path: f.path, file_name: f.name, speed: state.importSpeed || 500, merge_chunks: state.importMerge || 0 },
                     });
                     if (res && res.success) {
                         appendTerminal("✅ 导入任务已提交", "success");
@@ -8303,37 +8455,46 @@
         try {
             const res = await api("/ai/checkin", { method: "POST", body: {} });
             if (res) {
-                toastSuccess(res.message || "签到完成");
-                loadAICredits();
-                const btn = $("btnAiCheckin");
-                const status = $("checkinStatus");
-                if (btn && res.success) {
-                    btn.disabled = true;
-                    btn.textContent = "今日已签到";
-                    btn.style.opacity = "0.6";
+                if (res.success) {
+                    toastSuccess(res.message || "签到完成");
+                    loadAICredits();
+                    const statEl = $("statCredits");
+                    if (statEl && res.credits !== undefined) statEl.textContent = res.credits;
+                } else {
+                    toastInfo(res.message || "今天已签到, 明天再来");
                 }
+                setCheckinBtnState(res.success);
+                const status = $("checkinStatus");
                 if (status) status.textContent = res.message || "签到可得 20 积分";
-                // 同步仪表盘积分
-                const statEl = $("statCredits");
-                if (statEl && res.credits !== undefined) statEl.textContent = res.credits;
             }
         } catch (e) {
-            toastError("签到失败");
+            toastError("签到失败: " + (e.message || ""));
         }
     }
 
-    /** 每日签到状态刷新 (仪表盘加载时调用) */
+    /** 根据签到状态统一设置签到按钮 (true=已签到) */
+    function setCheckinBtnState(checkedIn) {
+        const btn = $("btnAiCheckin");
+        if (!btn) return;
+        if (checkedIn) {
+            btn.disabled = true;
+            btn.textContent = "今日已签到";
+            btn.style.opacity = "0.6";
+        } else {
+            btn.disabled = false;
+            btn.textContent = "每日签到 +20 积分";
+            btn.style.opacity = "1";
+        }
+    }
+
+    /** 每日签到状态刷新 (仪表盘加载时调用, 只读查询无副作用) */
     async function refreshCheckinStatus() {
         try {
-            const res = await api("/ai/checkin", { method: "POST", body: {} });
-            const btn = $("btnAiCheckin");
+            const res = await api("/ai/checkin/status");
             const status = $("checkinStatus");
-            if (btn && !res.success) {
-                // 今天已签: 禁用按钮
-                btn.disabled = true;
-                btn.textContent = "今日已签到";
-                btn.style.opacity = "0.6";
-                if (status) status.textContent = res.message || "明天再来";
+            if (res && res.success) {
+                setCheckinBtnState(!!res.checked_in);
+                if (status) status.textContent = res.checked_in ? "今日已签到, 明天再来" : "签到可得 20 积分";
             }
         } catch (e) { /* 忽略 */ }
     }

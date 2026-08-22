@@ -2344,7 +2344,47 @@
 
             // 加载面板关联的机器人
             await loadPanelBot();
+            // 加载游戏内导入白名单配置
+            loadImportWhitelist();
         } catch (_) { /* 已处理 */ }
+    }
+
+    /** 加载游戏内导入白名单 (填入设置页输入框) */
+    async function loadImportWhitelist() {
+        const panelId = state.currentPanelId;
+        const input = $("importWhitelistInput");
+        if (!panelId || !input) return;
+        try {
+            const res = await api(`/api/panel/${encodeURIComponent(panelId)}/import-whitelist`);
+            if (res && res.success) {
+                input.value = res.whitelist || "";
+            }
+        } catch (_) { /* 已处理 */ }
+    }
+
+    /** 保存游戏内导入白名单 */
+    async function saveImportWhitelist() {
+        const panelId = state.currentPanelId;
+        const input = $("importWhitelistInput");
+        if (!panelId || !input) return;
+        const text = (input.value || "").trim();
+        const btn = $("btnSaveImportWhitelist");
+        try {
+            if (btn) { btn.disabled = true; }
+            const res = await api(`/api/panel/${encodeURIComponent(panelId)}/import-whitelist`, {
+                method: "PUT",
+                body: { whitelist: text },
+            });
+            if (res && res.success) {
+                toastSuccess("白名单已保存");
+            } else {
+                toastError((res && res.message) || "保存失败");
+            }
+        } catch (e) {
+            toastError("保存失败: " + (e.message || "请求错误"));
+        } finally {
+            if (btn) { btn.disabled = false; }
+        }
     }
 
     /** 加载面板关联的机器人 */
@@ -2829,6 +2869,12 @@
                 state.menuMode = "import-search";
                 appendTerminal("→ 输入文件名关键词 (模糊搜索):", "info");
                 return;
+            } else if (cmdTrim === "5") {
+                // 文件解析器: 输入文件名关键词搜索
+                state.menuMode = "parser-search";
+                appendTerminal("══ 文件解析器 ══", "system");
+                appendTerminal("→ 输入文件名关键词 (模糊搜索):", "info");
+                return;
             } else if (cmdTrim === "menu") {
                 showMainMenu();
                 return;
@@ -2931,13 +2977,47 @@
             if (cmdTrim === "1") {
                 const f = state.importFile;
                 if (!f) { showMainMenu(); return; }
+                // 进入导入选项配置 (速度/增量/合并/拒绝/边界/NBT/命令方块)
+                state.importOptions = {
+                    use_fill: true, merge_chunks: 0,
+                    clear_area: false, import_command_block: true,
+                    speed: 200, deny_platform: false, boundary_wall: false,
+                    import_nbt: true,
+                };
+                _showImportOptions(f, state.importOptions);
+            } else {
+                showMainMenu();
+            }
+            return;
+        }
+        if (state.menuMode === "import-options") {
+            const f = state.importFile;
+            const opts = state.importOptions || {
+                use_fill: true, merge_chunks: 0,
+                clear_area: false, import_command_block: true,
+                speed: 200, deny_platform: false, boundary_wall: false,
+                import_nbt: true,
+            };
+            state.importOptions = opts;
+            if (cmdTrim === "8") {
+                state.menuMode = "";
                 appendTerminal(`开始导入: ${f.name}...`, "info");
                 appendTerminal("  进度将实时显示在控制台", "info");
-                // 调后端导入
+                // 调后端导入 (带选项)
                 try {
                     const res = await api(`/bots/${state.currentBotId}/import`, {
                         method: "POST",
-                        body: { file_path: f.path, file_name: f.name },
+                        body: {
+                            file_path: f.path, file_name: f.name,
+                            use_fill: opts.use_fill,
+                            merge_chunks: opts.merge_chunks,
+                            clear_area: opts.clear_area,
+                            import_command_block: opts.import_command_block,
+                            import_nbt: opts.import_nbt,
+                            speed: opts.speed,
+                            deny_platform: opts.deny_platform,
+                            boundary_wall: opts.boundary_wall,
+                        },
                     });
                     if (res && res.success) {
                         appendTerminal("✅ 导入任务已提交", "success");
@@ -2949,6 +3029,122 @@
                     appendTerminal("❌ 导入失败: " + (e.message || ""), "error");
                 }
                 showMainMenu();
+                return;
+            }
+            if (cmdTrim === "9") { showMainMenu(); return; }
+            if (cmdTrim === "1") {
+                // 每秒命令数量
+                state.menuMode = "import-speed";
+                appendTerminal("→ 输入每秒发送命令数量 (1-5000, 默认 200):", "info");
+                return;
+            }
+            else if (cmdTrim === "2") { opts.clear_area = !opts.clear_area; }
+            else if (cmdTrim === "3") {
+                state.menuMode = "import-merge-chunks";
+                appendTerminal("→ 输入合并区块 N (0=全局自动合并, 如 2=按2×2区块分组):", "info");
+                return;
+            }
+            else if (cmdTrim === "4") { opts.deny_platform = !opts.deny_platform; }
+            else if (cmdTrim === "5") { opts.boundary_wall = !opts.boundary_wall; }
+            else if (cmdTrim === "6") { opts.import_nbt = !opts.import_nbt; }
+            else if (cmdTrim === "7") { opts.import_command_block = !opts.import_command_block; }
+            else { appendTerminal("❌ 无此选项: " + cmdTrim, "warn"); }
+            _showImportOptions(f, opts);
+            return;
+        }
+        if (state.menuMode === "import-speed") {
+            const n = parseInt(cmdTrim);
+            if (isNaN(n) || n < 1 || n > 5000) {
+                appendTerminal("❌ 无效数字 (请输入 1-5000)", "error");
+            } else {
+                state.importOptions.speed = n;
+                appendTerminal(`每秒命令数量: ${n}`, "info");
+            }
+            _showImportOptions(state.importFile, state.importOptions);
+            return;
+        }
+        if (state.menuMode === "import-merge-chunks") {
+            const n = parseInt(cmdTrim);
+            if (isNaN(n) || n < 0) {
+                appendTerminal("❌ 无效数字", "error");
+            } else {
+                state.importOptions.merge_chunks = n;
+                appendTerminal(`合并区块设置为: ${n === 0 ? "全局自动合并" : n + "×" + n + " 区块分组"}`, "info");
+            }
+            _showImportOptions(state.importFile, state.importOptions);
+            return;
+        }
+        /* ── 文件解析器 ─────────────────────────────────────────────── */
+        if (state.menuMode === "parser-search") {
+            state.menuMode = "";
+            appendTerminal(`正在搜索建筑文件 "${cmdTrim}"...`, "info");
+            try {
+                const res = await api(`/files/my?keyword=${encodeURIComponent(cmdTrim)}`);
+                const files = (res && res.files) || [];
+                if (files.length === 0) {
+                    appendTerminal(`⚠️ 未找到包含 "${cmdTrim}" 的文件`, "warn");
+                    showMainMenu();
+                } else if (files.length === 1) {
+                    const f = files[0];
+                    appendTerminal(`找到 1 个文件: ${f.name} (${(f.size/1024).toFixed(1)}KB)`, "info");
+                    await _analyzeFile(f);
+                } else {
+                    appendTerminal(`── 找到 ${files.length} 个文件 ──`, "system");
+                    files.slice(0, 10).forEach((f, i) => {
+                        appendTerminal(`  [${i + 1}] ${f.name} (${(f.size/1024).toFixed(1)}KB)`, "info");
+                    });
+                    appendTerminal("  输入编号选择 (0 返回)", "system");
+                    state.parserFiles = files;
+                    state.menuMode = "parser-pick";
+                }
+            } catch (e) {
+                appendTerminal("❌ 搜索失败: " + (e.message || ""), "error");
+                showMainMenu();
+            }
+            return;
+        }
+        if (state.menuMode === "parser-pick") {
+            const idx = parseInt(cmdTrim);
+            if (idx === 0) { showMainMenu(); return; }
+            const files = state.parserFiles || [];
+            if (isNaN(idx) || idx < 1 || idx > files.length) {
+                appendTerminal("❌ 编号无效", "error");
+                state.menuMode = "parser-search";
+                appendTerminal("→ 输入文件名关键词 (模糊搜索):", "info");
+                return;
+            }
+            await _analyzeFile(files[idx - 1]);
+            return;
+        }
+        if (state.menuMode === "parser-done") {
+            state.menuMode = "";
+            if (cmdTrim === "1") {
+                state.menuMode = "parser-search";
+                appendTerminal("→ 输入文件名关键词 (模糊搜索):", "info");
+            } else if (cmdTrim === "3") {
+                const f = state.parserFile;
+                if (!f) { showMainMenu(); return; }
+                appendTerminal("正在生成 3D 预览数据...", "info");
+                try {
+                    const pv = await api("/api/parser/preview", {
+                        method: "POST",
+                        body: { file_path: f.path, fmt: f.ext || "" },
+                    });
+                    if (!pv || !pv.ok) {
+                        appendTerminal("❌ 3D 预览失败: " + ((pv && pv.message) || "未知"), "error");
+                        showMainMenu();
+                        return;
+                    }
+                    if (window.CGPreview3D) {
+                        window.CGPreview3D.open(pv);
+                    } else {
+                        appendTerminal("❌ 3D 引擎未加载 (检查 preview3d.js)", "error");
+                        showMainMenu();
+                    }
+                } catch (e) {
+                    appendTerminal("❌ 3D 预览失败: " + (e.message || ""), "error");
+                    showMainMenu();
+                }
             } else {
                 showMainMenu();
             }
@@ -3217,6 +3413,59 @@
     }
 
     /** 显示主菜单 (启动后才可见; 短行防换行) */
+    async function _analyzeFile(f) {
+        state.menuMode = "";
+        state.parserFile = f;
+        appendTerminal(`解析中: ${f.name} ...`, "info");
+        try {
+            const res = await api("/api/parser/stats_path", {
+                method: "POST",
+                body: { file_path: f.path, fmt: f.ext || "" },
+            });
+            if (!res || !res.ok) {
+                appendTerminal(`❌ 解析失败: ${(res && res.message) || "未知"}`, "error");
+                showMainMenu();
+                return;
+            }
+            const s = res.size || {};
+            appendTerminal("", "system");
+            appendTerminal(`══ 解析结果: ${res.filename} ══`, "system");
+            appendTerminal(`  格式: ${res.format} | 尺寸: ${s.width}×${s.height}×${s.length} (宽×高×长)`, "info");
+            appendTerminal(`  方块总数: ${res.total_blocks} | 方块种类: ${res.block_types_count}`, "info");
+            appendTerminal(`  NBT 数量: ${res.nbt_count} | 命令方块: ${res.command_block_count} | 区块数: ${res.chunk_count}`, "info");
+            const top = (res.top_types || []).slice(0, 10);
+            if (top.length > 0) {
+                appendTerminal(`  ── 方块种类 Top ${top.length} ──`, "system");
+                top.forEach((t, i) => {
+                    appendTerminal(`    ${i + 1}. ${t.name} × ${t.count}`, "info");
+                });
+            }
+            appendTerminal("", "system");
+            appendTerminal("  [1] 继续解析其他文件  [2] 返回主菜单  [3] 3D 预览", "system");
+            state.menuMode = "parser-done";
+            state.parserData = res;
+        } catch (e) {
+            appendTerminal("❌ 解析失败: " + (e.message || ""), "error");
+            showMainMenu();
+        }
+    }
+
+    function _showImportOptions(f, opts) {
+        state.menuMode = "import-options";
+        appendTerminal("", "system");
+        appendTerminal(`── 导入选项 ── ${f ? f.name : ""}`, "system");
+        appendTerminal(`[1] 每秒命令数: ${opts.speed}`, "info");
+        appendTerminal(`[2] 导入方式: ${opts.clear_area ? "清空重建 (原区域替换)" : "增量导入 (不清空)"}`, "info");
+        appendTerminal(`[3] 区块合并: ${opts.merge_chunks === 0 ? "全局自动合并" : opts.merge_chunks + "×" + opts.merge_chunks}`, "info");
+        appendTerminal(`[4] 底部拒绝方块: ${opts.deny_platform ? "铺设" : "不铺"}`, "info");
+        appendTerminal(`[5] 边界方块: ${opts.boundary_wall ? "铺设" : "不铺"}`, "info");
+        appendTerminal(`[6] 导入NBT: ${opts.import_nbt ? "是" : "否"}`, "info");
+        appendTerminal(`[7] 命令方块指令: ${opts.import_command_block ? "导入" : "跳过"}`, "info");
+        appendTerminal("[8] 确认导入", "success");
+        appendTerminal("[9] 取消", "muted");
+        appendTerminal("输入序号切换选项, 完成后输入 8 开始导入:", "info");
+    }
+
     function showMainMenu() {
         state.menuMode = "main";
         appendTerminal("", "system");
@@ -5634,6 +5883,9 @@
         $("manualAuth4399") && $("manualAuth4399").addEventListener("change", toggleManualAuthType);
         $("manualAuthCookie") && $("manualAuthCookie").addEventListener("change", toggleManualAuthType);
 
+        // ---- 游戏内导入白名单 ----
+        if ($("btnSaveImportWhitelist")) $("btnSaveImportWhitelist").addEventListener("click", saveImportWhitelist);
+
         // ---- MPay 手机号登录 ----
         const btnMpayLogin = $("btnMpayLogin");
         if (btnMpayLogin) btnMpayLogin.addEventListener("click", openMpayLoginModal);
@@ -7902,6 +8154,11 @@
                 if (d.has_password !== undefined && d.has_password !== null) html += `<div class="ipq-row"><span class="ipq-label"><i class="fas fa-lock"></i> 密码</span><span>${d.has_password ? '<span style="color:#f85149;">🔒有密码</span>' : '<span style="color:#3fb950;">🔓无密码</span>'}</span></div>`;
                 if (d.like_count != null && d.like_count !== "") html += `<div class="ipq-row"><span class="ipq-label"><i class="fas fa-thumbs-up"></i> 点赞数</span><span>${escapeHtml(String(d.like_count))}</span></div>`;
                 if (d.message) html += `<div class="ipq-row"><span class="ipq-label"><i class="fas fa-info-circle"></i> 信息</span><span>${escapeHtml(d.message)}</span></div>`;
+                if (d.attempts && Array.isArray(d.attempts) && d.attempts.length) {
+                    const attemptsHtml = d.attempts.map((t) =>
+                        `<div style="font-size:11px;color:#8b949e;padding:2px 0;">${escapeHtml(String(t))}</div>`).join("");
+                    html += `<div class="ipq-row" style="flex-direction:column;align-items:flex-start;gap:2px;"><span class="ipq-label"><i class="fas fa-sync-alt"></i> 查询过程</span><span style="width:100%;">${attemptsHtml}</span></div>`;
+                }
                 if (!html) html = `<div class="ipq-empty">未找到该房间信息</div>`;
                 if (bodyEl) {
                     bodyEl.innerHTML = html;
