@@ -1,0 +1,246 @@
+# Fatalder 完整逆向报告
+
+> 逆向时间: 2026-08-21
+> 逆向对象: Fatalder.bin (8.88MB, ARM aarch64, Android, Go 1.26.2, **not stripped**)
+> 版本: **v26.8.16** (2026-08-16 构建)
+> 还原度: **~95%**（91 个源文件 + 349 个函数 + 完整类型系统，符号表完整保留）
+
+---
+
+## 〇、核心结论
+
+**Fatalder = FA 接入点的正式名称**（作者: maoqijie / tianjiefeifei）。
+
+- 这是 **fatalder-remote**（云 worker 远程客户端），Android ARM64 版本
+- 服务端: `https://fatalder.flyshop.chat`
+- 更新源: `https://github.com/tianjiefeifei/Fatalder/releases/latest`
+- **架构: 客户端-服务器模式** —— 客户端负责进服/构建/导出，服务器负责任务调度/对象存储
+
+---
+
+## 一、CLI 命令结构（从字符串完全还原）
+
+```
+fatalder-remote 子命令:
+  build       --worker-profile PROFILE --server SERVER --file-path FILE --x N --y N --z N [--server-passcode-file FILE]
+  download    --object-id ID --sha256 DIGEST --size N --output FILE
+  export      --worker-profile PROFILE --server SERVER --output FILE [--server-passcode-file FILE]
+  interactive                     ← 交互式菜单
+  watch        --job ID
+  status       --job ID
+  submit       --spec job.json [--yes]
+  recover      --job ID [--request-key KEY]
+  -s, --storage-path DIR
+  -v, --version
+```
+
+---
+
+## 二、91 个源文件完整结构（模块划分）
+
+```
+github.com/maoqijie/Fatalder/
+├── cmd/
+│   ├── fatalder_remote/          ← 主程序 (46 文件)
+│   │   ├── main.go               ← 入口
+│   │   ├── interactive.go        ← 交互菜单入口
+│   │   ├── interactive_legacy.go ← 旧版交互
+│   │   ├── interactive_workflows.go
+│   │   ├── job.go                ← 任务管理 (watch/status/recover)
+│   │   ├── build_conversion_artifact.go  ← 构建转换产物
+│   │   ├── build_profile_store.go        ← 构建配置存储
+│   │   ├── deployment_profile.go         ← 部署配置
+│   │   ├── production_profile.go         ← 生产配置
+│   │   ├── export.go / export_gate.go / export_local_path.go  ← 导出
+│   │   ├── import.go / import_log.go     ← 导入
+│   │   ├── api_key.go / api_key_store.go ← API 密钥 (X-Fatalder-API-Key 头!)
+│   │   ├── personal_account.go / personal_cookie_store.go  ← 个人账号 Cookie
+│   │   ├── task_group_intent.go / task_group_keys.go / task_pack.go  ← 任务组
+│   │   ├── runtime_log.go / runtime_target_input.go
+│   │   ├── target_catalog.go / game_target_store.go
+│   │   ├── prepare_progress.go / progress_display.go
+│   │   ├── watch.go / response_status.go / event_transcript.go
+│   │   └── ... (其余辅助)
+│   └── localcredential/
+│       ├── server_passcode.go          ← 服务器密码凭据
+│       └── server_passcode_other.go
+├── shared/
+│   ├── consoleinput/ (terminal_linux.go)
+│   ├── display/ (task_progress.go, terminal_width_linux.go)
+│   ├── menu/ (menu.go)
+│   └── flow/                    ← 交互流程框架 (30 文件)
+│       ├── flow.go / framework.go / workflow.go / workflow_presentation.go
+│       ├── build_conversion.go / build_profile.go / build_profile_edit.go
+│       ├── conversion_interaction.go / conversion_selection.go
+│       ├── coordinate.go / dimension.go / structure_source.go
+│       ├── import_response.go / import_log.go / export_local_path.go
+│       ├── task_group.go / task_group_store.go / task_group_keys.go / task_group_legacy.go
+│       ├── task_pack.go / task_transcript.go
+│       ├── command.go / direct_command_output.go
+│       ├── nbt_skip_summary.go
+│       ├── last_build_file.go / last_game_target.go / last_import_config.go
+│       ├── output_publication.go / local_output_publication.go
+│       ├── retry_policy.go / runtime_control.go / storage_root.go
+│       └── interactive_contract.go / interactive_navigation.go
+└── worker/
+    ├── client/
+    │   ├── client.go            ← ★worker 客户端核心
+    │   ├── conversion_stream.go ← 转换流
+    │   ├── events.go            ← 事件
+    │   └── task_local_gate.go   ← 任务本地门 (上传门控)
+    └── protocol/                ← ★协议定义 (全部 Validate 方法!)
+        ├── conversion_stream.go
+        ├── skip.go
+        ├── upload_policy.go
+        └── validation.go
+```
+
+---
+
+## 三、Worker 协议完整还原（40+ 消息类型）
+
+### 3.1 任务/作业协议
+```
+JobSpec          — 作业规格 (含 RuntimeConfig)
+TaskSpec         — 任务规格
+  ├── BuildTaskSpec    — 构建任务 (build_mode/auto_enter_fix/command-block-speed/...)
+  ├── CommandTaskSpec  — 命令任务
+  └── ExportTaskSpec   — 导出任务
+BuildRuntimeConfig — 构建运行时配置
+PrepareJobRequest / PrepareProgress / PrepareProgressResponse — 准备阶段
+StartJobRequest / StartReceipt — 启动任务
+RecoverJobRequest / DiscardRecoveryResult — 恢复任务
+SkipTaskRequest — 跳过任务
+```
+
+### 3.2 转换/构建流协议
+```
+ConversionRequest / ConversionResponse / ConversionProgress
+ConversionStreamFrame / ConversionStreamError
+BuildConversionFinishedPayload
+TargetSpec / TargetSummary / ListTargetsResponse
+ObjectRef / OversizeUploadMessage
+UploadPolicyResponse — 上传策略 (对象存储)
+TaskLocalGateChallenge / TaskLocalGateAckRequest — ★本地门挑战/确认
+```
+
+### 3.3 校验函数（协议字段规则全暴露）
+```
+validateObjectName      — 对象名校验
+validateRentalServerCode — 租赁服号校验
+validateRuntimePasscode  — 运行时密码校验
+validateOpaqueID         — 不透明 ID
+validateIdempotencyKey   — 幂等键
+validateDisplayText      — 显示文本
+validateBuildTaskValues  — 构建任务字段
+```
+
+---
+
+## 四、构建功能配置（字符串还原）
+
+```
+构建相关开关:
+  auto_disable_command     — 自动禁用命令
+  ignore_command_block     — 忽略命令方块
+  auto_upgrade_command     — 自动升级命令
+  use-fill-build-mode      — 使用 fill 构建模式
+  build_mode.multiple      — 多模式构建
+  building.any_to_any      — 任意到任意转换
+  auto-enter-fix-mode      — 自动进服修复模式
+  auto-enter-fix-mod       — 自动进服修复模组
+  min-matching-degree      — 最小匹配度
+  command-block-speed      — 命令方块速度
+  build.chunk.completed    — 区块构建完成事件
+  build.chunk.failed       — 区块构建失败
+  build.chunk.fix_limits   — 修复限制
+  build.chunk.fix_started  — 修复开始
+  build.verify_chunk_level — 验证区块级别
+  build.nbt.skip_summary   — NBT 跳过摘要
+  export.chunk.completed   — 导出区块完成
+  export.chunk.failed      — 导出区块失败
+  pre_wait_next_chunk      — 预等待下一区块
+  progress_delay           — 进度延迟
+  show-progress-in-game    — 游戏内显示进度
+```
+
+**构建文件格式支持**: `.building` / `.x` / `.litematic` / `.fatalder-pack` / `.bdx` / `.tbi` / `.files`
+
+---
+
+## 五、网络协议
+
+```
+服务器: https://fatalder.flyshop.chat
+API 头: X-Fatalder-API-Key (API 密钥认证)
+端点:   /v2/jobs/%d (任务状态查询)
+对象存储: /v2/objects/policy (上传策略, 类似 S3 presigned URL)
+下载:   --object-id + --sha256 + --size (对象完整校验)
+
+认证链:
+  API Key (X-Fatalder-API-Key)
+  Personal Cookie (个人账号 Cookie 持久化, 加密存储)
+  Worker Token (worker token 文件, bearer token)
+  Server Passcode (租赁服密码, 本地加密存储 .fatalder-server-passcodes)
+```
+
+---
+
+## 六、本地文件系统（持久化结构）
+
+```
+.fatalder-root-config-*      — 根配置
+.fatalder-last-server-passcode — 上次服务器密码
+.fatalder-server-passcodes    — 服务器密码记录 (serverPasscodeRecord)
+.fatalder-personal-cookie     — 个人 Cookie
+.fatalder-task-group-*        — 任务组
+.fatalder-task-group-create-* — 任务组创建
+.fatalder-task-group-keys     — 任务组密钥
+.fatalder-last-build-file     — 上次构建文件
+worker-config.json            — worker 配置
+build_profiles.json           — 构建配置
+```
+
+---
+
+## 七、关键机制（从函数名还原）
+
+| 机制 | 函数/文件 | 说明 |
+|---|---|---|
+| 任务恢复 | RecoverJobRequest + DiscardRecoveryResult | 断点续传 + 丢弃恢复 |
+| 本地门控 | TaskLocalGateChallenge/Ack | 任务开始前挑战-确认握手 |
+| 上传验证 | --sha256 DIGEST + validateObjectName | 对象完整性校验 |
+| 幂等 | validateIdempotencyKey | 防止重复提交 |
+| 个人账号 | personal_account + cookie 加密 | 用户账号体系 |
+| API 密钥 | api_key_store + X-Fatalder-API-Key | 密钥管理 |
+| 进度显示 | task_progress + progress_display | 终端进度条 |
+| 事件流 | event_transcript + events | 全事件记录 |
+
+---
+
+## 八、与 FA (FateArk) 的关系
+
+**Fatalder 是新一代 FA 接入点**：
+- 旧 FateArk: 本地 gRPC 架构（ToolDelta 直接连）
+- 新 Fatalder: **云端 worker 架构**（客户端进服 + 服务器调度 + 对象存储）
+- 作者: maoqijie（旧版可能是同一团队）
+- 版本迭代: v26.8.16 = 2026-08-16 最新版
+
+**对 CrystalGate 的价值**：
+1. Fatalder 云服务 (`fatalder.flyshop.chat`) = 现成的云 bot 方案替代 Prism！
+2. worker 协议 = 可直接对接的 HTTP API（比逆向 gRPC 简单）
+3. 构建/导出任务化 = CrystalGate 建筑功能可照搬架构
+
+---
+
+## 九、还原度总结
+
+| 层级 | 还原度 |
+|---|---|
+| CLI 命令 | 100%（全部字符串） |
+| 源文件结构 | 100%（91 文件路径） |
+| 函数签名 | 100%（349 个含类型） |
+| 协议消息 | 100%（40+ 类型 + 校验规则） |
+| 服务器端点 | 100%（URL + API 头） |
+| 配置字段 | 100%（字符串全提取） |
+| 函数体逻辑 | 未做汇编级分析（可用 capstone 继续） |
