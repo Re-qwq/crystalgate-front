@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/main.css?v=1.8.6">
+    <link rel="stylesheet" href="css/main.css?v=1.9.0">
     <script>
     // ═══ 安全防护 (防F12/防调试) ═══
     (function(){
@@ -1790,8 +1790,8 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
 .btn-info:hover:not(:disabled) { background: rgba(88,166,255,0.25); }
     </style>
     <!-- Creative Effects (原创特效, 与方寸云端不同) -->
-    <link rel="stylesheet" href="css/creative-effects.css?v=1.8.6">
-    <link rel="stylesheet" href="vendor/xterm/xterm.css?v=1.8.6">
+    <link rel="stylesheet" href="css/creative-effects.css?v=1.9.0">
+    <link rel="stylesheet" href="vendor/xterm/xterm.css?v=1.9.0">
 </head>
 <body>
 
@@ -1803,15 +1803,17 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
 <span class="boot-gradient-1"><span class="boot-char">  / __|_ __| |__  _ _ __| |/ __|__ _| |_ ___</span></span>
 <span class="boot-gradient-2"><span class="boot-char"> | (__| '__| '_ \| '_/ _| | (_ / _` |  _/ -_)</span></span>
 <span class="boot-gradient-1"><span class="boot-char">  \___|_|  |_.__/|_| \__|_|\___\__,_|\__\___|</span></span></pre>
-        <div class="boot-version">Version <span id="bootVersion">v1.8.6</span></div>
+        <div class="boot-version">Version <span id="bootVersion">v1.9.0</span></div>
     <script>
-    // 兜底: 2.5秒后强制切换 (即使v2app.js加载失败也保证能看到登录页)
-    // 修复: 加全局标记, 登录成功(showApp)后不再强制显示登录页
+    // 兜底: v2app.js 加载失败或初始化超时 (12秒) 才强制切登录页
+    // 修复: 原 2.5s 固定兜底在隧道延迟高时 (v2app.js 加载慢/checkSession 慢)
+    // 会提前强切登录页, 用户看到"莫名跳加载页再登录"。改为检测脚本加载标记,
+    // v2app.js 成功加载后即置 __cgAppLoaded=true, 兜底不再干预正常初始化。
     (function() {
         window.__cgAppReady = false;
         setTimeout(function() {
             try {
-                if (window.__cgAppReady) return; // 应用已初始化完成, 不干预
+                if (window.__cgAppReady || window.__cgAppLoaded) return; // 应用已初始化, 不干预
                 var boot = document.getElementById("bootScreen");
                 var auth = document.getElementById("authScreen");
                 if (boot) boot.classList.add("fade-out");
@@ -1820,7 +1822,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
                     auth.classList.remove("fade-out");
                 }
             } catch(e) {}
-        }, 2500);
+        }, 12000);
     })();
     </script>
     <div class="boot-loader" id="bootLoader">
@@ -1953,7 +1955,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
         <div class="topbar-brand">
             <div class="brand-icon"><i class="fas fa-terminal"></i></div>
             <span class="brand-name">CrystalGate</span>
-            <span class="brand-version" id="topbarVersion">v1.8.6</span>
+            <span class="brand-version" id="topbarVersion">v1.9.0</span>
         </div>
         <div class="topbar-spacer"></div>
         <div class="topbar-actions">
@@ -2017,10 +2019,6 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
                 <div class="nav-item" data-view="ip-query" id="navIpQuery">
                     <i class="fas fa-map-marker-alt nav-icon"></i>
                     <span class="nav-label">查询信息</span>
-                </div>
-                <div class="nav-item" data-view="ai" id="navAi">
-                    <i class="fas fa-robot nav-icon"></i>
-                    <span class="nav-label">极迅智能</span>
                 </div>
                 <div class="nav-item" data-view="bot-create" id="navBotCreate">
                     <i class="fas fa-user-plus nav-icon"></i>
@@ -2095,23 +2093,6 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
             </div>
 
             <div class="stats-grid">
-                <div class="checkin-banner" style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,#1f6feb18,#388bfd18);border:1px solid #1f6feb44;border-radius:12px;padding:12px 16px;">
-                    <div style="display:flex;align-items:center;gap:10px;">
-                        <i class="fas fa-calendar-check" style="color:#3fb950;font-size:18px;"></i>
-                        <div>
-                            <div style="font-size:14px;font-weight:600;">每日签到</div>
-                            <div style="font-size:12px;color:var(--text-tertiary);" id="checkinStatus">签到可得 20 积分</div>
-                        </div>
-                    </div>
-                    <button class="btn btn-primary btn-sm" id="btnAiCheckin">签到 +20</button>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon yellow"><i class="fas fa-coins"></i></div>
-                    <div class="stat-info">
-                        <div class="stat-value" id="statCredits">0</div>
-                        <div class="stat-label">我的积分</div>
-                    </div>
-                </div>
                 <div class="stat-card">
                     <div class="stat-icon blue"><i class="fas fa-th-large"></i></div>
                     <div class="stat-info">
@@ -2236,7 +2217,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
                         <span id="detailPanelName">面板名称</span>
                         <span class="badge badge-active" id="detailPanelStatus">active</span>
                     </h2>
-                    <div class="panel-id-text">Panel ID: <span id="detailPanelId" class="mono">-</span></div>
+                    <div class="panel-id-text">Panel ID: <span id="detailPanelId" class="mono">-</span>
+                        <span id="detailPanelType" class="badge" style="margin-left:8px;background:#58a6ff22;color:#58a6ff;border:1px solid #58a6ff44;padding:1px 8px;border-radius:9999px;font-size:10px;font-weight:600;vertical-align:middle;">标准面板</span>
+                    </div>
                 </div>
                 <div style="margin-bottom:12px;display:flex;align-items:center;gap:8px;">
                     <span class="status-dot" id="panelStatusDot" style="background:var(--text-tertiary);"></span>
@@ -2282,7 +2265,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
 
                 <div class="console-body">
                     <!-- Console Tab -->
-                    <div class="console-panel active" id="ctab-console">
+                    <div class="console-panel" id="ctab-console">
                         <div class="terminal-toolbar">
                             <span class="toolbar-info" id="consoleInfo">等待连接...</span>
                             <div style="position:relative;display:inline-block;">
@@ -2399,6 +2382,8 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
                                         </label>
                                         <select class="form-input filter-select" id="botConfigServerType" style="width:100%;">
                                             <option value="rental">租赁服</option>
+                                            <option value="local">本地联机</option>
+                                            <option value="mountain">山头</option>
                                             <option value="lobby">联机大厅</option>
                                         </select>
                                     </div>
@@ -2407,11 +2392,11 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
                                             <i class="fas fa-users"></i> 账号来源 (仅管理员)
                                         </label>
                                         <select class="form-input filter-select" id="botConfigAccountMode" style="width:100%;">
-                                            <option value="pool">公益号池随机账号</option>
+                                            <option value="pool">数据库账号</option>
                                             <option value="own">自注册账号 (绑定本面板)</option>
                                         </select>
                                         <div class="form-hint" style="font-size:11px;color:var(--text-tertiary);margin-top:4px;">
-                                            pool=启动时从公益号池随机分配; own=使用用户自己注册绑定的账号。
+                                            pool=使用数据库中的账号池; own=使用用户自己注册绑定的账号。人数填充会跟随此设置。
                                         </div>
                                     </div>
                                 </div>
@@ -3325,6 +3310,19 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
                 </div>
             </div>
 
+            <!-- 服务器 structures 目录文件 -->
+            <div class="card" style="margin-bottom:20px;">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-folder-open"></i> 服务器 structures 文件</div>
+                    <div class="card-subtitle">选择服务器上的建筑文件直接解析, 无需上传</div>
+                </div>
+                <div class="card-body">
+                    <div id="parserServerFiles" style="max-height:220px;overflow-y:auto;border:1px solid var(--border-default);border-radius:var(--radius-md);padding:6px;">
+                        <div style="padding:20px;text-align:center;color:var(--text-tertiary);font-size:13px;">加载中...</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- 统计概览 -->
             <div class="stats-summary" id="parserStatsSummary" style="display:none;">
                 <div class="summary-item">
@@ -3357,6 +3355,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
             <div class="card" id="parserResultCard" style="display:none;">
                 <div class="card-header">
                     <div class="card-title"><i class="fas fa-list"></i> 解析结果 <span id="parserFileName" style="font-size:12px;color:var(--text-tertiary);margin-left:8px;"></span></div>
+                    <button class="btn btn-primary btn-sm" id="parserPreview3dBtn" style="display:none;">
+                        <i class="fas fa-cube"></i> 3D 预览
+                    </button>
                 </div>
                 <div class="table-wrap" style="border:none;border-radius:0;">
                     <table class="table">
@@ -3558,40 +3559,6 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
             </div>
         </section>
 
-    <!-- 极迅智能助手视图 -->
-    <section class="view" id="view-ai">
-        <div class="ai-container" style="display:flex;flex-direction:column;height:calc(100vh - 130px);width:100%;background:var(--bg-card);border:1px solid var(--border-default);border-radius:16px;overflow:hidden;">
-            <div class="ai-header" style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid var(--border-default);flex-shrink:0;">
-                <div>
-                    <div style="font-weight:700;font-size:18px;">极迅智能助手</div>
-                    <div style="font-size:12px;color:var(--text-tertiary);margin-top:2px;">对话 1 积分/次 · 以「反馈」开头可免费发 Bug 反馈</div>
-                </div>
-                <div style="display:flex;gap:8px;align-items:center;">
-                    <button class="btn btn-ghost btn-sm" id="btnAiClear" title="清空对话"><i class="fas fa-broom"></i> 清空</button>
-                </div>
-            </div>
-            <div id="aiMessages" style="flex:1;overflow-y:auto;padding:20px;background:var(--bg-canvas);display:flex;flex-direction:column;gap:14px;">
-                <div style="margin:auto;text-align:center;color:var(--text-tertiary);" id="aiEmptyState">
-                    <div style="font-size:40px;margin-bottom:12px;">💬</div>
-                    <div style="font-size:16px;font-weight:600;color:var(--text-secondary);">快和极迅智能助手聊天吧</div>
-                    <div style="font-size:12px;margin-top:6px;">可以问我面板功能、游戏问题、写插件<br>也可以让我帮你写插件、分析文件</div>
-                </div>
-            </div>
-            <div class="ai-input-area" style="padding:12px 16px;border-top:1px solid var(--border-default);background:var(--bg-card);flex-shrink:0;">
-                <input type="file" id="aiFileInput" style="display:none;" accept=".txt,.md,.py,.json,.log">
-                <div style="display:flex;gap:6px;align-items:center;width:100%;">
-                    <button class="btn btn-ghost btn-sm" id="btnAiAttach" title="上传文件 (≤3MB)" style="flex-shrink:0;width:34px;padding:0;"><i class="fas fa-paperclip"></i></button>
-                    <input type="text" id="aiInput" placeholder="给极迅发消息..." style="flex:1;min-width:0;background:var(--bg-input);border:1px solid var(--border-default);border-radius:10px;padding:10px 12px;color:var(--text-primary);font-size:14px;" autocomplete="off">
-                    <button class="btn btn-primary" id="btnAiSend" style="flex-shrink:0;min-width:64px;padding:10px 14px;"><i class="fas fa-paper-plane"></i></button>
-                </div>
-                <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--text-tertiary);">
-                    <span>Ctrl+Enter 换行</span>
-                    <span id="aiCredits">积分: --</span>
-                </div>
-            </div>
-        </div>
-    </section>
-
     <!-- 查询信息视图 -->
         <div class="view" id="view-ip-query">
             <div class="view-header">
@@ -3624,9 +3591,6 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
             <div class="view-header">
                 <h1><i class="fas fa-user-plus" style="color:var(--color-primary);"></i> 注册游戏账号</h1>
                 <p class="view-subtitle">自动注册独立网易账号 · 短信验证 · 全自动实名入库</p>
-                <div style="background:linear-gradient(135deg,#1f6feb22,#388bfd22);border:1px solid #1f6feb55;border-radius:8px;padding:8px 14px;margin-top:8px;font-size:13px;color:var(--text-secondary);">
-                    <i class="fas fa-coins" style="color:#d29922;"></i> 每次成功注册机器人可获得 <b style="color:#d29922;">+10 积分</b> (可用于极迅智能助手对话)
-                </div>
             </div>
             <div class="card">
                 <div style="display:flex;flex-direction:column;gap:16px;max-width:640px;margin:0 auto;padding:8px 0;">
@@ -4087,12 +4051,12 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
 <!-- ==========================================================================
      Scripts
      ========================================================================== -->
-<script src="vendor/xterm/xterm.js?v=1.8.6"></script>
-<script src="js/creative-effects.js?v=1.8.6"></script>
-<script src="js/backend-config.js?v=1.8.6"></script>
-<script src="vendor/three/three.min.js?v=1.8.6"></script>
-<script src="vendor/three/OrbitControls.js?v=1.8.6"></script>
-<script src="js/v2app.js?v=1.8.6"></script>
-<script src="js/preview3d.js?v=1.8.6"></script>
+<script src="vendor/xterm/xterm.js?v=1.9.0"></script>
+<script src="js/creative-effects.js?v=1.9.0"></script>
+<script src="js/backend-config.js?v=1.9.0"></script>
+<script src="vendor/three/three.min.js?v=1.9.0"></script>
+<script src="vendor/three/OrbitControls.js?v=1.9.0"></script>
+<script src="js/v2app.js?v=1.9.0"></script>
+<script src="js/preview3d.js?v=1.9.0"></script>
 </body>
 </html>
