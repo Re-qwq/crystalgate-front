@@ -145,6 +145,35 @@
         superadmin: "超级管理员",
     };
 
+    /**
+     * ======================================================================
+     * 框架化扩展: 面板类型注册表
+     * ----------------------------------------------------------------------
+     * 每个面板类型 = 一个"框架"，内部可挂载多种功能模块 (tab)。
+     * 未来新增面板形式 (如引流面板 drain: 让多个机器人进入游戏) 只需在此注册:
+     *   PANEL_TYPE_MODULES["drain"] = ["console", "logs", "files", "plugins", "settings", "drain-bots"]
+     * 并在下方 MODULE_RENDERERS 中提供对应渲染函数即可，无需改动框架本身。
+     * ======================================================================
+     */
+    const PANEL_TYPE_LABELS = {
+        standard: "标准面板",
+        drain: "引流面板",
+    };
+    /** 各面板类型挂载的功能模块 (tab) 列表 — 顺序即 tab 顺序 */
+    const PANEL_TYPE_MODULES = {
+        standard: ["console", "logs", "files", "plugins", "settings"],
+        drain: ["console", "logs", "files", "plugins", "settings"],  // 引流面板暂复用标准模块, 可扩展 "drain-bots" 等
+    };
+    /** 功能模块元信息: icon / 标题 / 对应 ctab 面板 id */
+    const PANEL_MODULE_META = {
+        console:  { icon: "fa-terminal",    label: "控制台", panelId: "ctab-console" },
+        logs:     { icon: "fa-list",        label: "日志",   panelId: "ctab-logs" },
+        files:    { icon: "fa-folder",      label: "文件",   panelId: "ctab-files" },
+        plugins:  { icon: "fa-puzzle-piece", label: "插件",   panelId: "ctab-plugins" },
+        settings: { icon: "fa-cog",         label: "设置",   panelId: "ctab-settings" },
+        // 未来新模块在这里注册: e.g. drain-bots: { icon: "fa-users", label: "引流机器人", panelId: "ctab-drain-bots" }
+    };
+
     /** 全局状态对象 */
     const state = {
         currentUser: null,            // 当前登录用户信息
@@ -652,6 +681,8 @@
     }
 
     async function init() {
+        // 标记脚本已成功加载, 阻止 boot 兜底脚本干预正常初始化
+        window.__cgAppLoaded = true;
         // 恢复本地存储的 token
         const savedToken = localStorage.getItem(TOKEN_KEY);
         if (savedToken) state.token = savedToken;
@@ -823,12 +854,15 @@
     }
 
     function showQuickHelp() {
-        toastInfo('CrystalGate v1.8.7 - Minecraft Bedrock 机器人管理平台');
+        toastInfo('CrystalGate v1.9.0 - Minecraft Bedrock 机器人管理平台');
     }
 
     /** 4399 账号管理弹窗: 提取 sauth_json / 注册新账号 */
 
     async function enterPanel() {
+        // 应用脚本已加载并开始初始化, 立即标记就绪, 防止 boot 兜底脚本在
+        // checkSession 网络慢时 (隧道延迟高) 2.5s 强切登录页造成"莫名跳加载页再登录"
+        window.__cgAppReady = true;
         // 淡出 boot 屏幕
         $("bootScreen").classList.add("fade-out");
 
@@ -1246,8 +1280,13 @@
         initWebSocket();
         // 启动面板状态定期检查 (TD风格: 面板关闭后锁定界面)
         startPanelStatusPolling();
-        // 默认切换到仪表盘
-        switchView("dashboard");
+        // 框架化: 从 hash 恢复上次所在的功能模块页 (#/xxx), 默认仪表盘
+        let target = "dashboard";
+        try {
+            const m = (location.hash || "").match(/^#\/([A-Za-z0-9_-]+)/);
+            if (m && $("view-" + m[1])) target = m[1];
+        } catch (_) {}
+        switchView(target);
     }
 
     /* ======================================================================
@@ -1293,6 +1332,14 @@
      */
     function isPanelLocked() {
         return _panelLocked;
+    }
+
+    /**
+     * 机器人是否已在租赁服内 (running/active): 进服后禁止启动/换肤等菜单操作
+     */
+    function isBotInGame() {
+        const s = state.panelBot ? state.panelBot.status : "";
+        return s === "running" || s === "active";
     }
 
     /**
@@ -1400,6 +1447,13 @@
             return;
         }
         state.currentView = view;
+        // 框架化: 每个功能模块 = 一页, 通过 hash 路由标记 (#/dashboard, #/panels ...)
+        if (location.hash !== "#/" + view) {
+            try {
+                // 不重复写入相同 hash, 避免历史记录堆积
+                history.replaceState(null, "", "#/" + view);
+            } catch (_) {}
+        }
 
         // 切换导航项高亮
         $$(".nav-item").forEach((item) => {
@@ -1515,10 +1569,141 @@
         if (refreshBtn) {
             refreshBtn.addEventListener("click", () => {
                 resetParserResult();
+                loadParserServerFiles();
                 toastInfo("已重置, 请重新选择文件");
             });
         }
+        // 3D 预览按钮
+        const pvBtn = $("parserPreview3dBtn");
+        if (pvBtn) {
+            pvBtn.addEventListener("click", () => {
+                const path = pvBtn.getAttribute("data-path");
+                const fmt = pvBtn.getAttribute("data-fmt") || "";
+                if (path) openParserPreview3D(path, fmt);
+            });
+        }
         resetParserResult();
+        loadParserServerFiles();
+    }
+
+    async function loadParserServerFiles(dirPath) {
+        const box = $("parserServerFiles");
+        if (!box) return;
+        try {
+            const q = dirPath ? "path=" + encodeURIComponent(dirPath) : "path=structures";
+            const data = await api("/api/v2/files/browse?" + q, { timeout: 15000 });
+            const dirs = (data && data.dirs) || [];
+            const files = (data && data.files) || [];
+            const SUPPORTED = [".bdx",".mcworld",".mcstructure",".schematic",".schem",".litematic",".nbt",
+                ".kbdx",".fuhong",".gangban",".axiombp",".nexus",".nexus_np",".bcf",".tibi",".bds",
+                ".mianyang",".covstructure",".runaway",".qingxu",".timebuilder",".construction",".ibimport"];
+            const list = files.filter(f => SUPPORTED.some(ext => f.name.toLowerCase().endsWith(ext)));
+            if (!dirs.length && !list.length) {
+                box.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-tertiary);font-size:13px;">该目录暂无建筑文件</div>';
+                return;
+            }
+            box.innerHTML = "";
+            // 返回上级
+            if (dirPath && dirPath !== "structures") {
+                const up = document.createElement("div");
+                up.style.cssText = "display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;cursor:pointer;color:var(--color-info);font-size:13px;";
+                up.innerHTML = '<i class="fas fa-level-up-alt"></i> 返回上级';
+                up.onclick = () => loadParserServerFiles("structures");
+                box.appendChild(up);
+            }
+            dirs.forEach(d => {
+                const row = document.createElement("div");
+                row.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;border-radius:6px;cursor:pointer;transition:background .15s;";
+                row.onmouseenter = () => row.style.background = "var(--bg-hover)";
+                row.onmouseleave = () => row.style.background = "transparent";
+                row.innerHTML = '<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;"><i class="fas fa-folder" style="color:var(--color-warning);margin-right:6px;"></i><span style="font-size:13px;">' + escapeHtml(d.name) + '</span></div>' +
+                    '<i class="fas fa-chevron-right" style="color:var(--text-tertiary);font-size:12px;"></i>';
+                row.onclick = () => loadParserServerFiles(d.path);
+                box.appendChild(row);
+            });
+            list.forEach(f => {
+                const row = document.createElement("div");
+                row.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;border-radius:6px;cursor:pointer;transition:background .15s;";
+                row.onmouseenter = () => row.style.background = "var(--bg-hover)";
+                row.onmouseleave = () => row.style.background = "transparent";
+                const info = document.createElement("div");
+                info.style.cssText = "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;";
+                info.innerHTML = '<i class="fas fa-file-archive" style="color:var(--text-tertiary);margin-right:6px;"></i><span style="font-family:monospace;font-size:13px;">' + escapeHtml(f.name) + '</span>' +
+                    '<span style="margin-left:10px;font-size:12px;color:var(--text-tertiary);">' + fmtSize(f.size) + '</span>';
+                const btn = document.createElement("button");
+                btn.className = "btn btn-secondary btn-sm";
+                btn.style.cssText = "flex:0 0 auto;";
+                btn.innerHTML = '<i class="fas fa-search"></i> 解析';
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    parseServerFile(f.path, f.name);
+                };
+                row.appendChild(info);
+                row.appendChild(btn);
+                box.appendChild(row);
+            });
+        } catch (err) {
+            box.innerHTML = '<div style="padding:16px;text-align:center;color:var(--color-danger);font-size:13px;">加载失败: ' + escapeHtml(extractApiMessage(err) || "请检查网络") + '</div>';
+        }
+    }
+
+    function fmtSize(bytes) {
+        if (!bytes && bytes !== 0) return "";
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+        return (bytes / 1048576).toFixed(2) + " MB";
+    }
+
+    async function parseServerFile(relPath, filename) {
+        const status = $("parserStatus");
+        if (!status) return;
+        resetParserResult();
+        status.style.display = "block";
+        status.style.background = "var(--bg-hover)";
+        status.style.color = "var(--text-secondary)";
+        status.textContent = "正在解析: " + filename + " ...";
+        const ext = filename.toLowerCase().split(".").pop();
+        try {
+            const data = await api("/api/parser/stats_path", { method: "POST", body: { file_path: "/" + relPath, fmt: ext }, timeout: 120000 });
+            renderParserResult(data, filename);
+            // 记录服务器文件路径供 3D 预览
+            const pvBtn = $("parserPreview3dBtn");
+            if (pvBtn) {
+                pvBtn.setAttribute("data-path", "/" + relPath);
+                pvBtn.setAttribute("data-fmt", ext);
+                pvBtn.style.display = "inline-flex";
+            }
+            status.style.display = "none";
+        } catch (err) {
+            status.style.background = "rgba(239,68,68,.12)";
+            status.style.color = "var(--color-danger)";
+            status.textContent = "解析失败: " + (extractApiMessage(err) || "请检查文件格式");
+        }
+    }
+
+    async function openParserPreview3D(filePath, fmt) {
+        if (!window.CGPreview3D) {
+            toastError("3D 预览组件未加载, 请刷新页面");
+            return;
+        }
+        const status = $("parserStatus");
+        if (status) {
+            status.style.display = "block";
+            status.style.background = "var(--bg-hover)";
+            status.style.color = "var(--text-secondary)";
+            status.textContent = "正在生成 3D 预览...";
+        }
+        try {
+            const data = await api("/api/parser/preview", { method: "POST", body: { file_path: filePath, fmt: fmt }, timeout: 120000 });
+            window.CGPreview3D.open(data);
+            if (status) status.style.display = "none";
+        } catch (err) {
+            if (status) {
+                status.style.background = "rgba(239,68,68,.12)";
+                status.style.color = "var(--color-danger)";
+                status.textContent = "3D 预览失败: " + (extractApiMessage(err) || "请检查文件");
+            }
+        }
     }
 
     function resetParserResult() {
@@ -1963,10 +2148,17 @@
      */
     function switchConsoleTab(tab) {
         state.currentConsoleTab = tab;
+        // 根据当前面板类型注册表获取该面板挂载的功能模块
+        const panelType = (state.panelDetail && state.panelDetail.panel_type) || "standard";
+        const modules = PANEL_TYPE_MODULES[panelType] || PANEL_TYPE_MODULES.standard;
         $$(".console-tab").forEach((t) => {
-            t.classList.toggle("active", t.dataset.consoleTab === tab);
+            const name = t.dataset.consoleTab;
+            // 只对当前面板已挂载的模块 tab 做高亮; 未挂载的 tab 不参与
+            if (modules.indexOf(name) !== -1) {
+                t.classList.toggle("active", name === tab);
+            }
         });
-        ["console", "logs", "files", "plugins", "settings"].forEach((name) => {
+        modules.forEach((name) => {
             const panel = $("ctab-" + name);
             if (panel) panel.classList.toggle("active", name === tab);
         });
@@ -1978,6 +2170,38 @@
         }
         if (tab === "files") loadPanelFiles();
         if (tab === "plugins") loadPanelPlugins();
+    }
+
+    /**
+     * 框架化: 按面板类型挂载功能模块。
+     * 根据 PANEL_TYPE_MODULES[panelType] 决定显示哪些 console-tab / ctab 面板。
+     * standard 面板挂载全部模块, 渲染结果与旧版完全一致 (UI 不变)。
+     */
+    function applyPanelTypeModules(panelType) {
+        panelType = panelType || "standard";
+        const modules = PANEL_TYPE_MODULES[panelType] || PANEL_TYPE_MODULES.standard;
+        // 控制 tab 显隐
+        $$(".console-tab").forEach((t) => {
+            const name = t.dataset.consoleTab;
+            const visible = modules.indexOf(name) !== -1;
+            t.classList.toggle("hidden", !visible);
+        });
+        // 控制面板显隐
+        Object.keys(PANEL_MODULE_META).forEach((name) => {
+            const panel = $("ctab-" + name);
+            if (!panel) return;
+            const visible = modules.indexOf(name) !== -1;
+            panel.classList.toggle("hidden", !visible);
+            // 隐藏的面板取消 active, 避免影响显示
+            if (!visible && panel.classList.contains("active")) {
+                panel.classList.remove("active");
+            }
+        });
+        // 若当前 tab 已被隐藏, 切回第一个可见模块
+        if (modules.indexOf(state.currentConsoleTab) === -1) {
+            const firstVisible = modules.find((m) => $("ctab-" + m));
+            if (firstVisible) switchConsoleTab(firstVisible);
+        }
     }
 
     /* ======================================================================
@@ -2021,15 +2245,6 @@
 
     /** 加载仪表盘数据 */
     async function loadDashboard() {
-        refreshCheckinStatus();
-        // 积分显示到仪表盘卡片
-        try {
-            const credRes = await api("/ai/credits");
-            const el = $("statCredits");
-            if (el && credRes && credRes.success) {
-                el.textContent = credRes.credits;
-            }
-        } catch (e) { /* 忽略 */ }
         updateWelcomeTime();
         await Promise.allSettled([loadStats(), loadActivity()]);
     }
@@ -2273,12 +2488,15 @@
             const expireAt = formatTime(panel.expire_at);
             const createdAt = formatTime(panel.created_at);
             const remaining = panel.remaining_seconds ? formatRemaining(panel.remaining_seconds) : null;
+            const ptype = panel.panel_type || "standard";
+            const ptypeLabel = PANEL_TYPE_LABELS[ptype] || ptype;
             return `
                 <div class="card panel-card" data-panel-id="${escapeHtml(panelId)}" style="cursor:pointer;transition:transform 0.2s,border-color 0.2s;" onmouseover="this.style.transform='translateY(-2px)';this.style.borderColor='#58a6ff';" onmouseout="this.style.transform='';this.style.borderColor='';">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
                         <div style="display:flex;align-items:center;gap:8px;">
                             <i class="fas fa-server" style="color:#58a6ff;"></i>
                             <span style="font-size:15px;font-weight:600;">${escapeHtml(panel.name || "未命名面板")}</span>
+                            ${ptype !== "standard" ? `<span style="background:#58a6ff22;color:#58a6ff;border:1px solid #58a6ff44;padding:1px 8px;border-radius:9999px;font-size:10px;font-weight:600;">${escapeHtml(ptypeLabel)}</span>` : ""}
                         </div>
                         ${getStatusBadge(status)}
                     </div>
@@ -2423,6 +2641,12 @@
                 $("detailPanelStatus").className = "badge";
                 $("detailPanelStatus").style.cssText = `background:${(STATUS_COLORS[panel.status] || "#7d8590")}22;color:${STATUS_COLORS[panel.status] || "#7d8590"};border:1px solid ${(STATUS_COLORS[panel.status] || "#7d8590")}44;padding:2px 10px;border-radius:9999px;font-size:11px;font-weight:600;`;
                 $("detailPanelId").textContent = panel.panel_id || panel.id || panelId;
+                // 面板类型标签
+                const ptype = panel.panel_type || "standard";
+                const ptypeEl = $("detailPanelType");
+                if (ptypeEl) ptypeEl.textContent = PANEL_TYPE_LABELS[ptype] || ptype;
+                // 框架化: 按面板类型挂载功能模块
+                applyPanelTypeModules(ptype);
             }
 
             // 显示到期检查信息
@@ -2788,13 +3012,16 @@
                         } else if (displayStatus === "running" && state._waitingForEnter) {
                             // 机器人真正进入租赁服!
                             state._waitingForEnter = false;
+                            state._botOpLock = false;
                             appendTerminal("✅ 已进入租赁服!", "success");
                             if (state.panelBot && state.panelBot.name) {
-                                appendTerminal(`   机器人: ${state.panelBot.name}`, "info");
+                                appendTerminal(`   机器人: ${state.panelBot.bot_real_name || state.panelBot.name}`, "info");
                             }
                             appendTerminal("   输入「导入」打开建筑工具", "info");
                             appendTerminal("   /say 文字 → 机器人说话", "info");
                             appendTerminal("   //命令 → 执行原版命令", "info");
+                            // 进服成功后才显示操作菜单
+                            showStartMenuAfterBoot();
                         } else if (displayStatus === "connecting" || displayStatus === "starting") {
                             appendTerminal("⏳ 正在连接...", "info");
                         }
@@ -2895,6 +3122,10 @@
         // ── 菜单模式 (TD 式交互) ──
         if (state.menuMode === "start-menu") {
             state.menuMode = "";
+            if (isBotInGame()) {
+                appendTerminal("❌ 机器人已在租赁服内，启动/换肤请先停止面板", "warn");
+                return;
+            }
             if (cmdTrim === "1") {
                 // 检查服务器号 → 启动进服
                 const bot = state.panelBot || {};
@@ -2906,25 +3137,228 @@
                     state.menuMode = "";
                     return;
                 }
-                await doRealStartBot();
+                // 租赁服启动前询问是否自动点赞, 其他玩法不提示
+                const srvType = (bot.server_type || "rental");
+                if (srvType === "rental") {
+                    state.menuMode = "like-confirm";
+                    appendTerminal("是否进服前自动点赞？(y/n):", "info");
+                } else {
+                    await doRealStartBot();
+                }
                 return;
             } else if (cmdTrim === "2") {
+                // 未进服时锁定皮肤功能
+                if (!isBotInGame()) {
+                    appendTerminal("❌ 机器人尚未进服, 请先启动机器人", "warn");
+                    showStartMenuAfterBoot();
+                    return;
+                }
                 state.menuMode = "skin";
                 appendTerminal("══ 皮肤管理 ══", "system");
                 appendTerminal("  [1] 商城搜皮肤 (输入名字搜索)", "system");
                 appendTerminal("  [2] 搜索玩家皮肤", "system");
                 appendTerminal("  [3] 返回", "system");
+            } else if (cmdTrim === "3") {
+                // 未进服时锁定人数填充
+                if (!isBotInGame()) {
+                    appendTerminal("❌ 机器人尚未进服, 请先启动机器人再使用人数填充", "warn");
+                    showStartMenuAfterBoot();
+                    return;
+                }
+                // 人数填充: 先检查服务器配置 → 再进入填充子菜单
+                const bot = state.panelBot || {};
+                const serverCode = bot.server_code || "";
+                if (!serverCode || serverCode === "待设置" || serverCode.trim() === "") {
+                    toastWarn("请先配置服务器号");
+                    appendTerminal("❌ 未配置服务器号, 请到「设置」中填写服务器号", "error");
+                    state.menuMode = "";
+                    return;
+                }
+                state.menuMode = "fill-mode";
+                appendTerminal("══ 人数填充 ══", "system");
+                // 显示当前面板账号来源 (跟随面板设置: 数据库账号 / 自注册绑定)
+                const fillAcctMode = bot.account_mode || "own";
+                const fillAcctLabel = fillAcctMode === "own" ? "自注册账号 (绑定本面板)" : "数据库账号";
+                appendTerminal(`  当前账号来源: ${fillAcctLabel} (跟随面板设置)`, "info");
+                appendTerminal("  [1] 租赁服填充", "system");
+                appendTerminal("  [2] 按房间号填充", "system");
+                appendTerminal("  [3] 按玩家编号填充", "system");
+                appendTerminal("  [4] 停止填充", "system");
+                appendTerminal("  [5] 查看状态", "system");
+                appendTerminal("  [0] 返回", "system");
+                appendTerminal("  输入编号选择:", "info");
+            } else if (cmdTrim === "0") {
+                appendTerminal("已取消", "info");
             } else {
-                appendTerminal("❌ 无此选项: " + cmdTrim + " (输入 1/2)", "warn");
+                appendTerminal("❌ 无此选项: " + cmdTrim + " (输入 1/2/0)", "warn");
                 showStartMenuAfterBoot();
             }
             return;
         }
-        if (state.menuMode === "start-confirm") {
+        if (state.menuMode === "like-confirm") {
             await handleLikeConfirm(cmdTrim);
             return;
         }
+        if (state.menuMode === "fill-mode") {
+            state.menuMode = "";
+            if (cmdTrim === "0") {
+                appendTerminal("已返回", "info");
+                showStartMenuAfterBoot();
+                return;
+            }
+            // 停止填充
+            if (cmdTrim === "4") {
+                appendTerminal("⏳ 正在停止人数填充...", "info");
+                try {
+                    const res = await api(`/bots/${state.currentBotId}/fill/stop`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" }
+                    });
+                    if (res && res.success) {
+                        toastSuccess(res.message || "人数填充已停止");
+                        appendTerminal(`✅ ${res.message || "人数填充已停止"}`, "success");
+                    } else {
+                        toastError(res?.message || "停止失败");
+                        appendTerminal(`❌ ${res?.message || "停止失败"}`, "error");
+                    }
+                } catch (err) {
+                    toastError(`停止失败: ${err?.message || "请求错误"}`);
+                    appendTerminal(`❌ 停止失败: ${err?.message || "请求错误"}`, "error");
+                }
+                showStartMenuAfterBoot();
+                return;
+            }
+            // 查看状态
+            if (cmdTrim === "5") {
+                appendTerminal("⏳ 正在查询填充状态...", "info");
+                try {
+                    const res = await api(`/bots/${state.currentBotId}/fill/status`, {
+                        headers: { "Content-Type": "application/json" }
+                    });
+                    if (res && res.success) {
+                        if (res.running) {
+                            appendTerminal(`📊 填充运行中: 模式=${res.mode || '-'}, 目标=${res.count || 0} 人, 当前填充=${res.fill_count || 0}, 真实玩家=${res.real_players || 0}`, "info");
+                            appendTerminal(`   最近日志: ${res.last_log || '-'}`, "info");
+                        } else {
+                            appendTerminal(`📊 ${res.message || "当前没有填充任务"}`, "info");
+                        }
+                    } else {
+                        appendTerminal(`❌ ${res?.message || "查询失败"}`, "error");
+                    }
+                } catch (err) {
+                    appendTerminal(`❌ 查询失败: ${err?.message || "请求错误"}`, "error");
+                }
+                state.menuMode = "fill-mode";
+                appendTerminal("══ 人数填充 ══", "system");
+                appendTerminal("  [1] 租赁服填充", "system");
+                appendTerminal("  [2] 按房间号填充", "system");
+                appendTerminal("  [3] 按玩家编号填充", "system");
+                appendTerminal("  [4] 停止填充", "system");
+                appendTerminal("  [5] 查看状态", "system");
+                appendTerminal("  [0] 返回", "system");
+                appendTerminal("  输入编号选择:", "info");
+                return;
+            }
+            const modeMap = { "1": "rental", "2": "lobby", "3": "player" };
+            const modeNameMap = { "1": "租赁服填充", "2": "按房间号填充", "3": "按玩家编号填充" };
+            const mode = modeMap[cmdTrim];
+            if (!mode) {
+                appendTerminal("❌ 无此选项: " + cmdTrim + " (输入 1/2/3/4/5/0)", "warn");
+                state.menuMode = "fill-mode";
+                return;
+            }
+            state.fillMode = mode;
+            if (mode === "player") {
+                // player 模式: 直接输入玩家编号, 人数由后端自动填满
+                state.menuMode = "fill-player";
+                appendTerminal("══ 按玩家编号填充 ══", "system");
+                appendTerminal("  请输入玩家UID或昵称 (自动定位其所在服务器并填满):", "info");
+                return;
+            }
+            state.menuMode = "fill-count";
+            const maxN = (mode === "rental") ? 40 : 10;
+            appendTerminal("══ " + modeNameMap[cmdTrim] + " ══", "system");
+            appendTerminal(`  请输入填充人数 (${mode === "rental" ? "1~40" : "1~10"} 人, 含主机器人):`, "info");
+            return;
+        }
+        if (state.menuMode === "fill-player") {
+            state.menuMode = "";
+            const pid = cmdTrim.trim();
+            if (!pid) {
+                appendTerminal("❌ 请输入玩家UID或昵称", "warn");
+                state.menuMode = "fill-mode";
+                appendTerminal("══ 人数填充 ══", "system");
+                appendTerminal("  [1] 租赁服填充", "system");
+                appendTerminal("  [2] 按房间号填充", "system");
+                appendTerminal("  [3] 按玩家编号填充", "system");
+                appendTerminal("  [4] 停止填充", "system");
+                appendTerminal("  [5] 查看状态", "system");
+                appendTerminal("  [0] 返回", "system");
+                appendTerminal("  输入编号选择:", "info");
+                return;
+            }
+            appendTerminal(`⏳ 正在定位玩家 [${pid}] 并填充...`, "info");
+            try {
+                const res = await api(`/bots/${state.currentBotId}/fill/start`, {
+                    method: "POST",
+                    body: JSON.stringify({ mode: "player", count: 1, player_id: pid }),
+                    headers: { "Content-Type": "application/json" }
+                });
+                if (res && res.success) {
+                    toastSuccess(res.message || "人数填充已启动");
+                    appendTerminal(`✅ ${res.message || "人数填充已启动"}`, "success");
+                } else {
+                    toastError(res?.message || "启动失败");
+                    appendTerminal(`❌ ${res?.message || "启动失败"}`, "error");
+                }
+            } catch (err) {
+                toastError(`启动失败: ${err?.message || "请求错误"}`);
+                appendTerminal(`❌ 启动失败: ${err?.message || "请求错误"}`, "error");
+            }
+            state.fillMode = "";
+            return;
+        }
+        if (state.menuMode === "fill-count") {
+            state.menuMode = "";
+            const n = parseInt(cmdTrim, 10);
+            const maxN = (state.fillMode === "rental") ? 40 : 10;
+            if (isNaN(n) || n < 1 || n > maxN) {
+                appendTerminal(`❌ 填充人数须为 ${state.fillMode === "rental" ? "1~40" : "1~10"} 的整数`, "warn");
+                state.menuMode = "fill-mode";
+                appendTerminal("══ 人数填充 ══", "system");
+                appendTerminal("  [1] 租赁服填充", "system");
+                appendTerminal("  [2] 按房间号填充", "system");
+                appendTerminal("  [3] 按玩家编号填充", "system");
+                appendTerminal("  [0] 返回", "system");
+                appendTerminal("  输入编号选择:", "info");
+                return;
+            }
+            appendTerminal(`⏳ 正在启动人数填充 (${n} 人)...`, "info");
+            try {
+                const res = await api(`/bots/${state.currentBotId}/fill/start`, {
+                    method: "POST",
+                    body: JSON.stringify({ mode: state.fillMode, count: n }),
+                    headers: { "Content-Type": "application/json" }
+                });
+                if (res && res.success) {
+                    toastSuccess(res.message || "人数填充已启动");
+                    appendTerminal(`✅ ${res.message || "人数填充已启动"}`, "success");
+                } else {
+                    toastError(res?.message || "启动失败");
+                    appendTerminal(`❌ ${res?.message || "启动失败"}`, "error");
+                }
+            } catch (err) {
+                toastError(`启动失败: ${err?.message || "请求错误"}`);
+                appendTerminal(`❌ 启动失败: ${err?.message || "请求错误"}`, "error");
+            }
+            state.fillMode = "";
+            return;
+        }
         if (state.menuMode === "main") {
+            if (isBotInGame() && (cmdTrim === "1")) {
+                appendTerminal("❌ 机器人已在租赁服内，换肤请先停止面板", "warn");
+                return;
+            }
             if (cmdTrim === "1") {
                 state.menuMode = "skin";
                 appendTerminal("══ 皮肤管理 ══", "system");
@@ -2934,7 +3368,7 @@
                 return;
             } else if (cmdTrim === "2") {
                 if (state.panelBot) {
-                    appendTerminal(`机器人: ${state.panelBot.name} | 状态: ${state.panelBot.status}`, "info");
+                    appendTerminal(`机器人: ${state.panelBot.bot_real_name || state.panelBot.name} | 状态: ${state.panelBot.status}`, "info");
                 } else {
                     appendTerminal("当前无机器人", "warn");
                 }
@@ -3008,9 +3442,11 @@
         }
         if (state.menuMode === "export-start") {
             state.menuMode = "";
-            const c = cmdTrim.split(",").map(Number);
+            const parts = cmdTrim.trim().split(",");
+            const parts2 = parts.length === 1 ? cmdTrim.trim().split(/\s+/) : parts;
+            const c = parts2.map(Number);
             if (c.length !== 3 || c.some(isNaN)) {
-                appendTerminal("❌ 格式错误, 请输入 x,y,z", "warn");
+                appendTerminal("❌ 格式错误, 请输入 x,y,z 或 x y z", "warn");
                 state.menuMode = "export-start";
                 return;
             }
@@ -3022,9 +3458,11 @@
         }
         if (state.menuMode === "export-end") {
             state.menuMode = "";
-            const c = cmdTrim.split(",").map(Number);
+            const parts = cmdTrim.trim().split(",");
+            const parts2 = parts.length === 1 ? cmdTrim.trim().split(/\s+/) : parts;
+            const c = parts2.map(Number);
             if (c.length !== 3 || c.some(isNaN)) {
-                appendTerminal("❌ 格式错误, 请输入 x,y,z", "warn");
+                appendTerminal("❌ 格式错误, 请输入 x,y,z 或 x y z", "warn");
                 state.menuMode = "export-end";
                 return;
             }
@@ -3128,9 +3566,9 @@
                 state.importFile = state.lastImport;
                 appendTerminal(`继续导入: ${state.lastImport.file_name}`, "info");
                 state.menuMode = "import-speed";
-                state.importSpeed = 500; // 默认
-                appendTerminal("── 导入速度 (每秒命令数, 100~3000) ──", "system");
-                appendTerminal("  直接输入数字 (最低100, 最高3000):", "info");
+                state.importSpeed = 300; // 默认
+                appendTerminal("── 发送指令速度 (默认300, 100~3000) ──", "system");
+                appendTerminal("  直接输入数字, 回车用默认 [300]:", "info");
             } else {
                 state.menuMode = "import-search";
                 appendTerminal("→ 输入文件名关键词 (模糊搜索):", "info");
@@ -3152,9 +3590,9 @@
                     appendTerminal(`找到 1 个文件: ${f.name} (${(f.size/1024).toFixed(1)}KB)`, "info");
                     state.importFile = f;
                     state.menuMode = "import-speed";
-                    state.importSpeed = 500; // 默认
-                    appendTerminal("── 导入速度 (每秒命令数, 100~3000) ──", "system");
-                    appendTerminal("  直接输入数字 (最低100, 最高3000):", "info");
+                    state.importSpeed = 300; // 默认
+                    appendTerminal("── 发送指令速度 (默认300, 100~3000) ──", "system");
+                    appendTerminal("  直接输入数字, 回车用默认 [300]:", "info");
                 } else {
                     // 多匹配: 列出选项
                     appendTerminal(`── 找到 ${files.length} 个文件 ──`, "system");
@@ -3184,27 +3622,82 @@
             const f = files[idx - 1];
             state.importFile = f;
             state.menuMode = "import-speed";
-            state.importSpeed = 500; // 默认
+            state.importSpeed = 300; // 默认
             appendTerminal(`选择: ${f.name}`, "info");
-            appendTerminal("── 导入速度 (每秒命令数, 100~3000) ──", "system");
-            appendTerminal("  直接输入数字 (最低100, 最高3000):", "info");
+            appendTerminal("── 发送指令速度 (默认300, 100~3000) ──", "system");
+            appendTerminal("  直接输入数字, 回车用默认 [300]:", "info");
             return;
         }
         if (state.menuMode === "import-speed") {
             const f = state.importFile;
             if (!f) { showMainMenu(); return; }
-            const v = parseInt(cmdTrim);
-            if (isNaN(v) || v < 100 || v > 3000) {
-                appendTerminal(`❌ 速度需在 100~3000 之间 (收到: "${cmdTrim}")`, "error");
-                appendTerminal("→ 输入速度 (100~3000 之间的数字):", "info");
-                return;
+            let v = 300;
+            if (cmdTrim.trim() !== "") {
+                v = parseInt(cmdTrim);
+                if (isNaN(v) || v < 100 || v > 3000) {
+                    appendTerminal(`❌ 速度需在 100~3000 之间 (收到: "${cmdTrim}")`, "error");
+                    appendTerminal("→ 输入速度 (100~3000 之间的数字, 回车用默认300):", "info");
+                    return;
+                }
             }
             state.importSpeed = v;
-            state.menuMode = "import-merge";
-            state.importMerge = 0; // 默认不分组
-            appendTerminal(`导入速度: ${v}/秒`, "info");
-            appendTerminal("── 合并区块 (N×N, 0=全局合并) ──", "system");
-            appendTerminal("  直接输入数字 (0=全局合并, 1=1×1, 2=2×2, 4=4×4...):", "info");
+            state.menuMode = "import-coord";
+            state.importCoord = null;
+            appendTerminal(`发送指令速度: [${v}]`, "info");
+            appendTerminal("── 导入坐标 (格式 x,y,z) ──", "system");
+            appendTerminal("  直接回车用默认 (0,-60,0):", "info");
+            return;
+        }
+        if (state.menuMode === "import-coord") {
+            const f = state.importFile;
+            if (!f) { showMainMenu(); return; }
+            let coord = [0, -60, 0];
+            if (cmdTrim.trim() !== "") {
+                // 兼容逗号 (x,y,z) 与空格 (x y z) 两种格式
+                let parts = cmdTrim.trim().split(",");
+                if (parts.length === 1) parts = cmdTrim.trim().split(/\s+/);
+                const c = parts.map(Number);
+                if (c.length !== 3 || c.some(isNaN)) {
+                    appendTerminal("❌ 格式错误, 请输入 x,y,z 或 x y z (如 100,-60,200 或 100 -60 200)", "error");
+                    appendTerminal("→ 导入坐标 (格式 x,y,z 或 x y z):", "info");
+                    return;
+                }
+                coord = c;
+            }
+            state.importCoord = coord;
+            state.menuMode = "import-options";
+            state.importOptions = { deny_platform: true, boundary_wall: true, clear_area: false };
+            appendTerminal(`导入坐标: (${coord[0]},${coord[1]},${coord[2]})`, "info");
+            appendTerminal("── 导入选项 ──", "system");
+            appendTerminal("  [1] 铺设拒绝方块 (最底层): 开", "system");
+            appendTerminal("  [2] 铺设边界方块 (建筑四周): 开", "system");
+            appendTerminal("  [3] 清空导入区域: 关", "system");
+            appendTerminal("  输入编号切换 (可多选), 直接回车确认:", "info");
+            return;
+        }
+        if (state.menuMode === "import-options") {
+            const f = state.importFile;
+            if (!f) { showMainMenu(); return; }
+            const opts = state.importOptions || { deny_platform: true, boundary_wall: true, clear_area: false };
+            if (cmdTrim.trim() === "") {
+                state.importOptions = opts;
+                state.menuMode = "import-confirm";
+                appendTerminal(`选项: 拒绝方块[${opts.deny_platform ? "开" : "关"}] 边界方块[${opts.boundary_wall ? "开" : "关"}] 清空区域[${opts.clear_area ? "开" : "关"}]`, "info");
+                appendTerminal("  [1] 确认导入  [2] 取消", "system");
+                return;
+            }
+            if (cmdTrim === "1") opts.deny_platform = !opts.deny_platform;
+            else if (cmdTrim === "2") opts.boundary_wall = !opts.boundary_wall;
+            else if (cmdTrim === "3") opts.clear_area = !opts.clear_area;
+            else {
+                appendTerminal("❌ 无此选项: " + cmdTrim + " (输入 1/2/3, 回车确认)", "warn");
+            }
+            state.importOptions = opts;
+            appendTerminal("── 导入选项 ──", "system");
+            appendTerminal(`  [1] 铺设拒绝方块 (最底层): ${opts.deny_platform ? "开" : "关"}`, "system");
+            appendTerminal(`  [2] 铺设边界方块 (建筑四周): ${opts.boundary_wall ? "开" : "关"}`, "system");
+            appendTerminal(`  [3] 清空导入区域: ${opts.clear_area ? "开" : "关"}`, "system");
+            appendTerminal("  输入编号切换 (可多选), 直接回车确认:", "info");
             return;
         }
         if (state.menuMode === "import-merge") {
@@ -3231,9 +3724,22 @@
                 appendTerminal("  进度将实时显示在控制台", "info");
                 // 调后端导入
                 try {
+                    const coord = state.importCoord || [0, -60, 0];
+                    const opts = state.importOptions || { deny_platform: true, boundary_wall: true, clear_area: false };
                     const res = await api(`/bots/${state.currentBotId}/import`, {
                         method: "POST",
-                        body: { file_path: f.path, file_name: f.name, speed: state.importSpeed || 500, merge_chunks: state.importMerge || 0 },
+                        body: {
+                            file_path: f.path, file_name: f.name,
+                            speed: state.importSpeed || 300, merge_chunks: state.importMerge || 0,
+                            x: coord[0], y: coord[1], z: coord[2],
+                            use_fill: true,
+                            clear_area: !!opts.clear_area,
+                            import_nbt: true,
+                            import_command_block: true,
+                            deny_platform: !!opts.deny_platform,
+                            boundary_wall: !!opts.boundary_wall,
+                            go_import: true,
+                        },
                     });
                     if (res && res.success) {
                         appendTerminal("✅ 导入任务已提交", "success");
@@ -3392,7 +3898,7 @@
         }
         if (cmdTrim === "status") {
             if (state.panelBot) {
-                appendTerminal(`机器人: ${state.panelBot.name} | 状态: ${state.panelBot.status}`, "info");
+                appendTerminal(`机器人: ${state.panelBot.bot_real_name || state.panelBot.name} | 状态: ${state.panelBot.status}`, "info");
             } else {
                 appendTerminal("当前无机器人", "warn");
             }
@@ -3441,12 +3947,14 @@
         appendTerminal("  输入编号选择:", "info");
     }
 
-    /** 启动菜单: 1启动 2皮肤 3大厅 4本地联机 */
+    /** 启动菜单: 1启动 2皮肤 3人数填充 0取消 (大厅/本地联机等玩法请在「设置」中配置服务器类型) */
     function showStartMenuAfterBoot() {
         state.menuMode = "start-menu";
-        appendTerminal("══ 菜单 ══", "system");
+        appendTerminal("══ 请选择操作 ══", "system");
         appendTerminal("  [1] 启动", "system");
         appendTerminal("  [2] 皮肤", "system");
+        appendTerminal("  [3] 人数填充", "system");
+        appendTerminal("  [0] 取消", "system");
         appendTerminal("  输入编号选择:", "info");
     }
 
@@ -3468,12 +3976,35 @@
             toastWarn("请先创建面板机器人");
             return;
         }
-        // 用户要求: 点启动 → 立即启动 → 启动完毕 → 弹菜单
+        // 进服后禁止再次启动/换肤 (游戏内无法生效且有封禁风险)
+        if (isBotInGame()) {
+            toastWarn("机器人已在租赁服内，启动/换肤请先停止面板");
+            appendTerminal("❌ 机器人已在租赁服内，启动/换肤需先停止面板", "warn");
+            return;
+        }
+        // 防连点: 正在启动中直接忽略
+        if (state._botOpLock) {
+            toastWarn("正在启动中，请稍候...");
+            return;
+        }
+        // 用户要求: 点启动 → 立即启动进服, 进服成功后才显示菜单
         await doRealStartBot();
     }
 
-    async function doRealStartBot() {
+    async function doRealStartBot(like = false) {
         if (isPanelLocked()) { toastWarn("面板已锁定，无法操作"); return; }
+        // 进服后禁止再次启动 (双保险, 后端同样拦截)
+        if (isBotInGame()) {
+            toastWarn("机器人已在租赁服内，请先停止面板");
+            appendTerminal("❌ 机器人已在租赁服内，请先停止面板", "warn");
+            return;
+        }
+        // 防连点: 启动中忽略重复请求
+        if (state._botOpLock) {
+            toastWarn("正在启动中，请稍候...");
+            return;
+        }
+        state._botOpLock = true;
         // 先检查服务器号配置
         const bot = state.panelBot || {};
         const serverCode = (bot.server_code || "").trim();
@@ -3495,7 +4026,7 @@
             updatePanelBotUI();
             const res = await api(`/bots/${state.currentBotId}/start`, {
                 method: "POST",
-                body: { like: false, skin_name: "", welcome: false },
+                body: { like: !!like, skin_name: "", welcome: false },
             });
             if (res.success) {
                 appendTerminal("⏳ 正在进入租赁服...", "info");
@@ -3506,12 +4037,14 @@
                 await loadPanelBot();
                 // 不立即弹菜单, 等 WS 推送 "已进入租赁服"
                 state._waitingForEnter = true;
+                // 锁保持 true: 进服成功前禁止再次启动
             } else {
                 const errMsg = res.detail || res.message || "启动失败 (未知原因)";
                 appendTerminal(`❌ 启动失败: ${errMsg}`, "error");
                 toastError(errMsg);
                 if (state.panelBot) state.panelBot.status = "error";
                 updatePanelBotUI();
+                state._botOpLock = false;
             }
         } catch (err) {
             const errMsg = err?.message || err?.detail || "启动请求失败";
@@ -3519,6 +4052,7 @@
             toastError(errMsg);
             if (state.panelBot) state.panelBot.status = "error";
             updatePanelBotUI();
+            state._botOpLock = false;
         } finally {
             startBtn.disabled = false;
         }
@@ -3584,28 +4118,17 @@
         }
     }
 
-    /** 执行点赞确认 (启动后询问) */
+    /** 执行点赞确认 (启动前询问) */
     async function handleLikeConfirm(answer) {
         const t = (answer || "").trim().toLowerCase();
         const wantLike = t === "y" || t === "yes";
         state.menuMode = "";
         if (wantLike) {
-            appendTerminal("🎁 正在给租赁服点赞...", "info");
-            try {
-                const botId = state.currentBotId;
-                const res = await api(`/bots/${botId}/like`, { method: "POST" });
-                if (res && res.success) {
-                    appendTerminal(`✅ 点赞成功 (当前 ${res.like_num || "?"} 赞)`, "success");
-                } else {
-                    appendTerminal(`⚠️ 点赞失败: ${(res && res.message) || "未知"}`, "warn");
-                }
-            } catch (e) {
-                appendTerminal("⚠️ 点赞失败: " + (e.message || "请求错误"), "warn");
-            }
+            appendTerminal("✅ 已选择自动点赞, 正在启动...", "info");
         } else {
-            appendTerminal("已跳过点赞", "info");
+            appendTerminal("已选择不点赞, 正在启动...", "info");
         }
-        showMainMenu();
+        await doRealStartBot(wantLike);
     }
 
     /** 停止机器人 */
@@ -3636,6 +4159,7 @@
             toastError(errMsg);
         } finally {
             stopBtn.disabled = false;
+            state._botOpLock = false;
         }
     }
 
@@ -3646,10 +4170,10 @@
         const restartBtn = $("btnRestartBot");
         try {
             restartBtn.disabled = true;
-            appendTerminal("正在重启机器人...", "system");
+            appendTerminal("正在停止机器人...", "system");
             const res = await api(`/bots/${state.currentBotId}/restart`, { method: "POST" });
             if (res.success) {
-                appendTerminal("机器人重启成功", "success");
+                appendTerminal("已停止, 正在重新启动...", "info");
                 toastSuccess("机器人已重启");
                 await loadPanelBot();
             } else {
@@ -3720,7 +4244,7 @@
                 const modeSel = $("botConfigAccountMode");
                 const modeGroup = $("botConfigAccountModeGroup");
                 if (modeSel && modeGroup) {
-                    modeSel.value = bot.account_mode || "pool";
+                    modeSel.value = bot.account_mode || "own";
                     // 仅管理员显示账号来源选项
                     const isAdmin = state.currentUser && state.currentUser.is_admin;
                     modeGroup.classList.toggle("hidden", !isAdmin);
@@ -7955,11 +8479,11 @@
                             : '<span style="color:#7d8590;background:#7d859022;border:1px solid #7d859044;padding:2px 8px;border-radius:9999px;font-size:11px;white-space:nowrap;display:inline-block;">空号</span>';
                 // V1.5: 封禁/解封按钮已移除 (封禁由进服时服务端拒绝自动标记; 手工封禁无意义)
                 const created = r.created_at ? new Date(r.created_at * 1000).toLocaleString('zh-CN') : '-';
-                // 账号来源: CG_ 自注册号 (已被风控) vs 公益号池号
+                // 账号来源: CG_ 自注册号 (已被风控) vs 数据库账号
                 const isSelfReg = (r.name || '').startsWith('CG_');
                 const typeBadge = isSelfReg
                     ? '<span style="color:#f85149;font-size:11px;">自注册(已判死)</span>'
-                    : '<span style="color:#58a6ff;font-size:11px;">公益号池</span>';
+                    : '<span style="color:#58a6ff;font-size:11px;">数据库账号</span>';
                 return `<tr>
                     <td><span class="mono">${escapeHtml(r.name)}</span></td>
                     <td>${escapeHtml(r.real_name || '-')}</td>
@@ -7990,20 +8514,18 @@
     let _bcTimer = null;
     let _bcDeadline = 0;
 
-    /** 点击验证码内容 → 复制并 toast 提示 (不在格子内显示已复制) */
+    /** 点击验证码内容 → 复制 (copyToClipboard 内自带提示, 不重复弹) */
     window.copyBcSmsContent = function() {
         const t = ($("bcSmsContent") || {}).textContent || "";
         if (!t || t === "-") return;
         copyToClipboard(t);
-        toastSuccess("已复制");
     };
 
-    /** 点击号码 → 复制并 toast 提示 */
+    /** 点击号码 → 复制 (copyToClipboard 内自带提示, 不重复弹) */
     window.copyBcSmsNumber = function() {
         const t = ($("bcSmsNumber") || {}).textContent || "";
         if (!t || t === "-") return;
         copyToClipboard(t);
-        toastSuccess("已复制");
     };
 
     function resetBcView() {
@@ -8127,6 +8649,37 @@
     };
     // 初始化步骤指示
     setBcStep(1);
+    // 联机大厅房间卡片: 查该房间的IP端口 (走 local 查询 = tan_lobby_login)
+    window.queryRoomIp = async function(roomId, idx) {
+        const box = document.getElementById("roomIpBox" + idx);
+        if (!box) return;
+        box.style.display = "block";
+        box.innerHTML = `<div class="ipq-loading"><i class="fas fa-spinner fa-spin"></i> 查询IP端口中...</div>`;
+        try {
+            const res = await api(`/ip-query?type=local&code=${encodeURIComponent(roomId || "")}`);
+            if (res.success && res.data) {
+                const d = res.data;
+                const full = d.ip_address || ((d.ip && d.port) ? `${d.ip}:${d.port}` : "");
+                if (!full) {
+                    box.innerHTML = `<div style="color:var(--color-warning);"><i class="fas fa-search-minus"></i> 未获取到IP端口 (房间可能已离线)</div>`;
+                    return;
+                }
+                let h = `<div style="margin-bottom:6px;"><span style="color:#8b949e;">IP端口:</span> <code style="background:#161b22;padding:2px 8px;border-radius:4px;color:#58a6ff;font-size:13px;">${escapeHtml(full)}</code>
+                    <button class="btn btn-primary btn-sm" style="margin-left:8px;" data-copy="${escapeHtml(full)}"><i class="fas fa-copy"></i> 复制</button></div>`;
+                if (d.signaling_server) h += `<div style="color:#8b949e;margin-top:4px;">信令: <code style="color:#d29922;">${escapeHtml(d.signaling_server)}</code></div>`;
+                if (d.bot_name) h += `<div style="color:#8b949e;margin-top:4px;">机器人: ${escapeHtml(d.bot_real_name || d.bot_name)}</div>`;
+                box.innerHTML = h;
+                box.querySelectorAll("[data-copy]").forEach((el) => {
+                    el.addEventListener("click", () => copyToClipboard(el.dataset.copy));
+                });
+            } else {
+                box.innerHTML = `<div style="color:var(--color-warning);"><i class="fas fa-exclamation-triangle"></i> ${escapeHtml(res.message || "查询失败")}</div>`;
+            }
+        } catch (e) {
+            box.innerHTML = `<div style="color:var(--color-danger);"><i class="fas fa-exclamation-circle"></i> 查询出错, 请重试</div>`;
+        }
+    };
+
     window.queryIpPort = async function() {
         const typeEl = $("ipQueryType");
         const inputEl = $("ipQueryInput");
@@ -8225,10 +8778,12 @@
                                 <span style="font-size:11px;color:#6e7681;">ID:</span>
                                 <code style="background:#0d1117;padding:3px 8px;border-radius:4px;font-size:11px;color:#58a6ff;word-break:break-all;flex:1;min-width:140px;">${eid}</code>
                             </div>
-                            <div style="display:flex;gap:8px;margin-top:10px;">
-                                <button class="btn btn-secondary btn-sm" data-copy="${eid}" style="flex:1;"><i class="fas fa-copy"></i> 复制房间ID</button>
-                                <button class="btn btn-secondary btn-sm" data-copy="${rname}" style="flex:1;"><i class="fas fa-copy"></i> 复制房间号</button>
+                            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+                                <button class="btn btn-secondary btn-sm" data-copy="${eid}" style="flex:1;min-width:96px;"><i class="fas fa-copy"></i> 复制ID</button>
+                                <button class="btn btn-secondary btn-sm" data-copy="${rname}" style="flex:1;min-width:96px;"><i class="fas fa-copy"></i> 复制房间号</button>
+                                <button class="btn btn-primary btn-sm" onclick="window.queryRoomIp('${eid}', ${i})" style="flex:1;min-width:110px;"><i class="fas fa-globe"></i> 查IP端口</button>
                             </div>
+                            <div id="roomIpBox${i}" style="margin-top:8px;padding:8px;background:#0d1117;border-radius:6px;display:none;font-size:12px;word-break:break-all;"></div>
                         </div>`;
                     });
                     if (bodyEl) {
@@ -8284,276 +8839,19 @@
         }
     };
 
-    document.addEventListener("DOMContentLoaded", () => init());  // 用箭头函数取最新 init (含 initAI 包装)
+    document.addEventListener("DOMContentLoaded", () => init());
+
+    // 框架化: 监听 hash 变化 (浏览器前进/后退/手动改 URL), 切换到对应功能模块页
+    window.addEventListener("hashchange", () => {
+        try {
+            const m = (location.hash || "").match(/^#\/([A-Za-z0-9_-]+)/);
+            if (m && m[1] && m[1] !== state.currentView) {
+                const viewEl = $("view-" + m[1]);
+                if (viewEl) switchView(m[1]);
+            }
+        } catch (_) {}
+    });
 
 })();
 
 
-
-
-/* ======================================================================
-   20. 智能助手 (AI 助手)
-   ====================================================================== */
-    const aiHistory = [];
-    let aiGenerating = false;
-
-    // ── 全局事件委托: 始终注册 (不受 DOM 时序影响) ──
-    document.addEventListener("click", (e) => {
-        const t = e.target;
-        if (!t || !t.closest) return;
-        // AI 发送按钮
-        const sendBtnEl = t.closest("#btnAiSend");
-        if (sendBtnEl) {
-            e.preventDefault();
-            sendAIMessage();
-            return;
-        }
-        // AI 清空按钮
-        const clearBtnEl = t.closest("#btnAiClear");
-        if (clearBtnEl) {
-            aiHistory.length = 0;
-            const box = $("aiMessages");
-            if (box) box.innerHTML = "";
-            appendAIMessage("assistant", "对话已清空, 有什么想问的?");
-            return;
-        }
-        // AI 签到按钮
-        const checkinBtnEl = t.closest("#btnAiCheckin");
-        if (checkinBtnEl) {
-            e.preventDefault();
-            doAICheckin();
-            return;
-        }
-        // AI 附件按钮
-        const attachBtnEl = t.closest("#btnAiAttach");
-        if (attachBtnEl) {
-            const fi = $("aiFileInput");
-            if (fi) fi.click();
-            return;
-        }
-    });
-
-    // 输入框 Enter 发送 (全局 keydown 委托)
-    document.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-            const t = e.target;
-            if (t && t.id === "aiInput") {
-                e.preventDefault();
-                sendAIMessage();
-            }
-        }
-    });
-
-    async function initAI() {
-        const fileInput = $("aiFileInput");
-        if (fileInput) fileInput.addEventListener("change", handleAIFile);
-        // 积分加载
-        loadAICredits();
-    }
-
-    function appendAIMessage(role, text) {
-        const box = $("aiMessages");
-        if (!box) return;
-        const div = document.createElement("div");
-        div.style.cssText = role === "user"
-            ? "align-self:flex-end;max-width:75%;background:linear-gradient(135deg,#1f6feb,#388bfd);color:#fff;padding:10px 16px;border-radius:14px 14px 4px 14px;font-size:14px;line-height:1.5;word-break:break-word;"
-            : "align-self:flex-start;max-width:85%;background:#161b22;border:1px solid #30363d;color:#e6edf3;padding:10px 16px;border-radius:14px 14px 14px 4px;font-size:14px;line-height:1.5;word-break:break-word;white-space:pre-wrap;";
-        div.textContent = text;
-        box.appendChild(div);
-        box.scrollTop = box.scrollHeight;
-        return div;
-    }
-
-    async function sendAIMessage() {
-        const input = $("aiInput");
-        if (!input) return;
-        const msg = input.value.trim();
-        if (!msg || aiGenerating) return;
-        // 积分检查 (无积分拦截, Bug反馈除外)
-        const isBugReport = msg.toLowerCase().startsWith("bug:") || msg.startsWith("BUG:") || msg.startsWith("反馈");
-        if (!isBugReport) {
-            try {
-                const credRes = await api("/ai/credits");
-                if (credRes && credRes.success && !credRes.is_admin && credRes.credits <= 0) {
-                    appendAIMessage("assistant", "⚠️ 积分不足! 请先签到或注册机器人获取积分。\n(以「反馈」开头的消息可以免费发送 Bug 反馈)");
-                    toastWarn("积分不足");
-                    return;
-                }
-            } catch (e) { /* 积分检查失败不阻塞 */ }
-        }
-        input.value = "";
-        const emptyState = $("aiEmptyState");
-        if (emptyState) emptyState.style.display = "none";
-        appendAIMessage("user", msg);
-        aiHistory.push({ role: "user", content: msg });
-        aiGenerating = true;
-        const sendBtn = $("btnAiSend");
-        if (sendBtn) {
-            sendBtn.innerHTML = '<i class="fas fa-stop"></i> 停止';
-            sendBtn.disabled = true;
-        }
-        // Bug 反馈检测 + 冷却 (60秒一次) — 复用上方 isBugReport
-        if (isBugReport) {
-            const now = Date.now();
-            if (!state.lastBugReportTs || now - state.lastBugReportTs >= 60000) {
-                state.lastBugReportTs = now;
-                try {
-                    await api("/bugs/report", { method: "POST", body: { content: msg } });
-                    appendAIMessage("assistant", "🐛 已收到你的 Bug 反馈, 感谢! 开发团队会尽快处理。");
-                } catch (e) { /* 记录失败不阻塞 */ }
-            } else {
-                const remain = Math.ceil((60000 - (now - state.lastBugReportTs)) / 1000);
-                appendAIMessage("assistant", `⏳ 反馈冷却中, 请 ${remain} 秒后再试`);
-                aiGenerating = false;
-                if (sendBtn) {
-                    sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 发送';
-                    sendBtn.disabled = false;
-                }
-                return;
-            }
-        }
-        try {
-            const res = await api("/ai/chat", {
-                method: "POST",
-                body: { message: msg, history: aiHistory.slice(-8) },
-                timeout: 120000,
-            });
-            if (res && res.success) {
-                appendAIMessage("assistant", res.reply || "(空回复)");
-                aiHistory.push({ role: "assistant", content: res.reply || "" });
-                // 超上下文检测: 历史超过32轮时自动裁剪 (保留最近16轮)
-                if (aiHistory.length > 64) {
-                    aiHistory.splice(0, aiHistory.length - 32);
-                    appendAIMessage("assistant", "📝 (对话较长, 已自动遗忘最早的部分内容以保持流畅)");
-                }
-            } else {
-                appendAIMessage("assistant", "⚠️ " + ((res && res.message) || "调用失败"));
-            }
-        } catch (e) {
-            appendAIMessage("assistant", "⚠️ 网络错误: " + (e.message || ""));
-        } finally {
-            aiGenerating = false;
-            if (sendBtn) {
-                sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 发送';
-                sendBtn.disabled = false;
-            }
-        }
-        loadAICredits();
-    }
-
-    async function loadAICredits() {
-        try {
-            const res = await api("/ai/credits");
-            if (res && res.success) {
-                const el = $("aiCredits");
-                if (el) el.textContent = "积分: " + res.credits;
-            }
-        } catch (e) { /* 忽略 */ }
-    }
-
-    async function doAICheckin() {
-        try {
-            const res = await api("/ai/checkin", { method: "POST", body: {} });
-            if (res) {
-                if (res.success) {
-                    toastSuccess(res.message || "签到完成");
-                    loadAICredits();
-                    const statEl = $("statCredits");
-                    if (statEl && res.credits !== undefined) statEl.textContent = res.credits;
-                } else {
-                    toastInfo(res.message || "今天已签到, 明天再来");
-                }
-                setCheckinBtnState(res.success);
-                const status = $("checkinStatus");
-                if (status) status.textContent = res.message || "签到可得 20 积分";
-            }
-        } catch (e) {
-            toastError("签到失败: " + (e.message || ""));
-        }
-    }
-
-    /** 根据签到状态统一设置签到按钮 (true=已签到) */
-    function setCheckinBtnState(checkedIn) {
-        const btn = $("btnAiCheckin");
-        if (!btn) return;
-        if (checkedIn) {
-            btn.disabled = true;
-            btn.textContent = "今日已签到";
-            btn.style.opacity = "0.6";
-        } else {
-            btn.disabled = false;
-            btn.textContent = "每日签到 +20 积分";
-            btn.style.opacity = "1";
-        }
-    }
-
-    /** 每日签到状态刷新 (仪表盘加载时调用, 只读查询无副作用) */
-    async function refreshCheckinStatus() {
-        try {
-            const res = await api("/ai/checkin/status");
-            const status = $("checkinStatus");
-            if (res && res.success) {
-                setCheckinBtnState(!!res.checked_in);
-                if (status) status.textContent = res.checked_in ? "今日已签到, 明天再来" : "签到可得 20 积分";
-            }
-        } catch (e) { /* 忽略 */ }
-    }
-
-    async function handleAIFile(event) {
-        const file = event.target.files[0];
-        event.target.value = "";
-        if (!file) return;
-        if (file.size > 3 * 1024 * 1024) {
-            toastError("文件超过 3MB 限制");
-            return;
-        }
-        toastInfo("正在读取文件: " + file.name);
-        // 只读前 50KB 文本
-        const blob = file.slice(0, 50 * 1024);
-        const text = await blob.text().catch(() => "(二进制文件)");
-        const truncated = text.length >= 50 * 1024 ? "\n...(文件过大, 已截断)" : "";
-        const prompt = "用户上传了文件: " + file.name + "\n内容:\n" + text.slice(0, 8000) + truncated + "\n\n请分析这个文件。";
-        appendAIMessage("user", "📎 " + file.name);
-        aiHistory.push({ role: "user", content: prompt });
-        // 直接调用
-        aiGenerating = true;
-        try {
-            const res = await api("/ai/chat", {
-                method: "POST",
-                body: { message: prompt, history: aiHistory.slice(-8) },
-                timeout: 120000,
-            });
-            if (res && res.success) {
-                appendAIMessage("assistant", res.reply || "(空回复)");
-                aiHistory.push({ role: "assistant", content: res.reply || "" });
-            }
-        } catch (e) {
-            appendAIMessage("assistant", "⚠️ 分析失败");
-        }
-        aiGenerating = false;
-    }
-
-    // 备用: 每 500ms 重试绑定 (直到成功) — 防止 DOM 异步加载导致按钮无响应
-    let _aiRetryCount = 0;
-    const _aiRetry = setInterval(() => {
-        const s = $("btnAiSend");
-        const i = $("aiInput");
-        if (s && i && (s._aiBound || _aiRetryCount > 20)) {
-            clearInterval(_aiRetry);
-            if (!s._aiBound) {
-                s.addEventListener("click", () => sendAIMessage());
-                i.addEventListener("keydown", (e) => {
-                    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAIMessage(); }
-                });
-                s._aiBound = true;
-            }
-        }
-        _aiRetryCount++;
-    }, 500);
-
-    // AI 初始化钩子: 在 init() 里调用
-    const _origInit2 = init;
-    init = async function() {
-        await _origInit2();
-        try { initAI(); } catch (e) { /* AI 未启用 */ }
-    };

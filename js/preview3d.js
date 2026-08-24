@@ -29,12 +29,14 @@
 
     /* ---- 工具: 从 atlas 裁出单个瓦片 Canvas ---- */
     function tileCanvas(index) {
-        var cols = atlasMeta.cols || 16;
-        var ts = atlasMeta.tile || 16;
+        var cols = (atlasMeta && atlasMeta.cols) || 16;
+        var ts = (atlasMeta && atlasMeta.tile) || 16;
+        var idx = Number(index);
+        if (!isFinite(idx) || idx < 0) idx = 0;
         var c = document.createElement("canvas");
         c.width = ts; c.height = ts;
         var ctx = c.getContext("2d");
-        var r = Math.floor(index / cols), col = index % cols;
+        var r = Math.floor(idx / cols), col = idx % cols;
         ctx.drawImage(atlasTex.image, col * ts, r * ts, ts, ts, 0, 0, ts, ts);
         return c;
     }
@@ -134,7 +136,8 @@
         keys.forEach(function (key, gi) {
             var grp = groups[key];
             var name = grp.name;
-            var idx = (blockMeta && (blockMeta[name] || blockMeta[name.split(":")[1]] || blockMeta[name.split("[")[0]])) ? (blockMeta[name] || blockMeta[name.split(":")[1]] || blockMeta[name.split("[")[0]]).atlas : 0;
+            var meta = (blockMeta && (blockMeta[name] || blockMeta[name.split(":")[1]] || blockMeta[name.split("[")[0]])) || null;
+            var idx = (meta && isFinite(Number(meta.atlas))) ? Number(meta.atlas) : 0;
             var tex = new THREE.CanvasTexture(tileCanvas(idx));
             tex.magFilter = THREE.NearestFilter;
             tex.minFilter = THREE.NearestFilter;

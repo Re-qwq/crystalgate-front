@@ -163,7 +163,7 @@ async function loadPanels() {
         <div class="panel-meta">
           <span class="status-badge status-${st}">${st === 'running' ? '运行中' : st === 'stopped' ? '已停止' : st === 'expired' ? '已过期' : '已封禁'}</span>
           <span>到期: ${expireText}</span>
-          ${p.bot_name ? `<span>机器人: ${p.bot_name}</span>` : ''}
+          ${p.bot_name ? `<span>机器人: ${p.bot_real_name || p.bot_name}</span>` : ''}
         </div>
       </div>`;
     }).join('');
@@ -186,7 +186,7 @@ async function startPanel() {
     });
     const d = await r.json();
     if (!r.ok) { appendConsole(`❌ ${d.detail || '启动失败'}`); return; }
-    appendConsole(`✅ ${d.message}${d.bot_name ? ' · 机器人: ' + d.bot_name : ''}`);
+    appendConsole(`✅ ${d.message}${(d.bot_real_name || d.bot_name) ? ' · 机器人: ' + (d.bot_real_name || d.bot_name) : ''}`);
     pollConsole();
   } catch (e) { appendConsole('❌ 网络错误'); }
 }
@@ -286,7 +286,7 @@ async function loadConsole() {
     }
     body.scrollTop = body.scrollHeight;
     document.getElementById('consoleTitle').textContent =
-      `面板 ${currentPanel} · 状态: ${d.status}${d.bot_name ? ' · 机器人: ' + d.bot_name : ''}`;
+      `面板 ${currentPanel} · 状态: ${d.status}${(d.bot_real_name || d.bot_name) ? ' · 机器人: ' + (d.bot_real_name || d.bot_name) : ''}`;
     if (d.status === 'running') scheduleConsolePoll();
   } catch (e) {
     consolePollFailures++;
