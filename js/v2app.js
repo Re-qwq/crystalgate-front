@@ -3012,6 +3012,7 @@
                         } else if (displayStatus === "running" && state._waitingForEnter) {
                             // 机器人真正进入租赁服!
                             state._waitingForEnter = false;
+                            state._botOpLock = false;
                             appendTerminal("✅ 已进入租赁服!", "success");
                             if (state.panelBot && state.panelBot.name) {
                                 appendTerminal(`   机器人: ${state.panelBot.bot_real_name || state.panelBot.name}`, "info");
@@ -3019,6 +3020,8 @@
                             appendTerminal("   输入「导入」打开建筑工具", "info");
                             appendTerminal("   /say 文字 → 机器人说话", "info");
                             appendTerminal("   //命令 → 执行原版命令", "info");
+                            // 进服成功后才显示操作菜单
+                            showStartMenuAfterBoot();
                         } else if (displayStatus === "connecting" || displayStatus === "starting") {
                             appendTerminal("⏳ 正在连接...", "info");
                         }
@@ -3144,12 +3147,24 @@
                 }
                 return;
             } else if (cmdTrim === "2") {
+                // 未进服时锁定皮肤功能
+                if (!isBotInGame()) {
+                    appendTerminal("❌ 机器人尚未进服, 请先启动机器人", "warn");
+                    showStartMenuAfterBoot();
+                    return;
+                }
                 state.menuMode = "skin";
                 appendTerminal("══ 皮肤管理 ══", "system");
                 appendTerminal("  [1] 商城搜皮肤 (输入名字搜索)", "system");
                 appendTerminal("  [2] 搜索玩家皮肤", "system");
                 appendTerminal("  [3] 返回", "system");
             } else if (cmdTrim === "3") {
+                // 未进服时锁定人数填充
+                if (!isBotInGame()) {
+                    appendTerminal("❌ 机器人尚未进服, 请先启动机器人再使用人数填充", "warn");
+                    showStartMenuAfterBoot();
+                    return;
+                }
                 // 人数填充: 先检查服务器配置 → 再进入填充子菜单
                 const bot = state.panelBot || {};
                 const serverCode = bot.server_code || "";
@@ -3967,12 +3982,13 @@
             appendTerminal("❌ 机器人已在租赁服内，启动/换肤需先停止面板", "warn");
             return;
         }
-        // 防止连点: 菜单已弹出时不重复弹
-        if (state.menuMode === "start-menu" || state.menuMode === "like-confirm" || state.menuMode === "skin") {
+        // 防连点: 正在启动中直接忽略
+        if (state._botOpLock) {
+            toastWarn("正在启动中，请稍候...");
             return;
         }
-        // 用户要求: 点启动 → 弹出选项菜单 → 输入 1 才真正启动进服
-        showStartMenuAfterBoot();
+        // 用户要求: 点启动 → 立即启动进服, 进服成功后才显示菜单
+        await doRealStartBot();
     }
 
     async function doRealStartBot(like = false) {
@@ -3983,10 +3999,12 @@
             appendTerminal("❌ 机器人已在租赁服内，请先停止面板", "warn");
             return;
         }
-        // 防止连点: 菜单已弹出时不重复弹
-        if (state.menuMode === "start-menu" || state.menuMode === "like-confirm") {
+        // 防连点: 启动中忽略重复请求
+        if (state._botOpLock) {
+            toastWarn("正在启动中，请稍候...");
             return;
         }
+        state._botOpLock = true;
         // 先检查服务器号配置
         const bot = state.panelBot || {};
         const serverCode = (bot.server_code || "").trim();
@@ -4019,12 +4037,14 @@
                 await loadPanelBot();
                 // 不立即弹菜单, 等 WS 推送 "已进入租赁服"
                 state._waitingForEnter = true;
+                // 锁保持 true: 进服成功前禁止再次启动
             } else {
                 const errMsg = res.detail || res.message || "启动失败 (未知原因)";
                 appendTerminal(`❌ 启动失败: ${errMsg}`, "error");
                 toastError(errMsg);
                 if (state.panelBot) state.panelBot.status = "error";
                 updatePanelBotUI();
+                state._botOpLock = false;
             }
         } catch (err) {
             const errMsg = err?.message || err?.detail || "启动请求失败";
@@ -4032,9 +4052,9 @@
             toastError(errMsg);
             if (state.panelBot) state.panelBot.status = "error";
             updatePanelBotUI();
+            state._botOpLock = false;
         } finally {
             startBtn.disabled = false;
-            state._botOpLock = false;
         }
     }
 
