@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>CrystalGate 3D 预览测试页</title>
+<style>html,body{margin:0;height:100%;background:#1b1b1b;}#cg3d-root{position:fixed;inset:0;}</style>
+</head>
+<body>
+<div id="cg3d-root"></div>
+<script src="vendor/three/three.min.js?v=1.9.0"></script>
+<script src="vendor/three/OrbitControls.js?v=1.9.0"></script>
+<script src="js/preview3d.js?v=2.1.0"></script>
+<script>
+(async function () {
+    try {
+        var res = await fetch("test_preview.json?_t=" + Date.now());
+        var data = await res.json();
+        console.log("preview data ok, total=", data.total, "cmd=", data.command_block_count);
+        window.__previewData = data;
+        // 打开 3D 预览, 挂到 #cg3d-root
+        var root = document.getElementById("cg3d-root");
+        window.CGPreview3D.open(data);
+        // 等渲染完成
+        setTimeout(function () {
+            window.__renderDone = true;
+            console.log("render done");
+        }, 2500);
+    } catch (e) {
+        console.error("init failed:", e);
+        window.__renderError = String(e && e.stack || e);
+    }
+})();
+</script>
+</body>
+</html>
