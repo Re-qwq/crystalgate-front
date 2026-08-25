@@ -20,10 +20,11 @@
     "use strict";
 
     var ASSETS = "/assets/textures";
-    var ATLAS_IMG = ASSETS + "/atlas.png";
-    var ATLAS_JSON = ASSETS + "/block_textures.json";
-    var ITEM_ATLAS_IMG = ASSETS + "/item_atlas.png";
-    var ITEM_ATLAS_JSON = ASSETS + "/item_textures.json";
+    // v2: 强制刷新旧缓存 (glass_pane 贴图修正)
+    var ATLAS_IMG = ASSETS + "/atlas.png?v=2";
+    var ATLAS_JSON = ASSETS + "/block_textures.json?v=2";
+    var ITEM_ATLAS_IMG = ASSETS + "/item_atlas.png?v=2";
+    var ITEM_ATLAS_JSON = ASSETS + "/item_textures.json?v=2";
 
     var container = null, renderer = null, scene = null, camera = null, controls = null;
     var atlasTex = null, atlasMeta = null, blockMeta = null;
@@ -31,6 +32,7 @@
     var rootGroup = null, specialGroups = { barrier: null, void: null, light: null };
     var loadSeq = 0, built = false;
     var entityByPos = {};
+    var chunkLines = null;      // 区块边界线组
 
     var geoCache = {};          // shape+key -> BufferGeometry
     var matCache = {};          // base+faces+transparent -> MeshLambertMaterial[]
@@ -142,10 +144,31 @@
     }
 
     /* ================= 材质 (按方块 6 面) ================= */
-    // faces: [px,nx,py,ny,pz,nz] 纹理名数组
+    // 半透明渲染白名单: 仅这些类型按半透明渲染, 防止元数据误标导致方块发灰/叠色
+    function isRealTransparent(base) {
+        var b = (base || "").toLowerCase();
+        if (/glass/.test(b) && !/hardened/.test(b)) return true;
+        if (/stained_glass/.test(b)) return true;
+        if (/leaves/.test(b)) return true;
+        if (/^ice$/.test(b) || /frosted_ice/.test(b)) return true;
+        if (/water|seagrass|kelp|vine|cobweb|spawner|portal|conduit|scaffolding|chain$|ladder/.test(b)) return true;
+        if (/torch|lantern$|soul_lantern|end_rod|lightning_rod|candle|redstone_wire|rail|tripwire|lever|button|pressure_plate|repeater|comparator/.test(b)) return true;
+        if (/slime_block|honey_block|barrier|structure_void|light_block|light$/.test(b)) return true;
+        if (/sapling|flower|grass$|fern|fungus|roots|sprouts|coral_fan|coral_wall_fan|kelp|vine|lily|sugar_cane|bamboo/.test(b)) return true;
+        if (/dripleaf|spore|eyeblossom|petals|propagule|hanging|azalea|chorus|frogspawn|firefly|small_dripleaf|big_dripleaf|short_grass|tall_grass|sea_pickle|pointed_dripstone|amethyst_cluster|amethyst_bud/.test(b)) return true;
+        if (/moss_carpet|pale_moss_carpet|sculk_vein|glow_lichen|cave_vines|weeping_vines|twisting_vines/.test(b)) return true;
+        if (/door|trapdoor|glass_pane/.test(b)) return true;
+        if (/sign|banner|skull|head/.test(b)) return true;
+        if (/hopper|cauldron|enchanting_table|brewing_stand|decorated_pot|campfire|soul_campfire|bell/.test(b)) return true;
+        if (/potted_|flower_pot/.test(b)) return true;
+        if (/snow_layer/.test(b)) return true;
+        if (/end_portal|end_gateway|nether_portal/.test(b)) return true;
+        return false;
+    }
     function materialFor(parsed, transparent) {
         var m = metaOf(parsed);
         var faces = (m && m.faces) || ["stone", "stone", "stone", "stone", "stone", "stone"];
+        transparent = transparent && isRealTransparent(parsed.base);
         var key = parsed.base + "|" + faces.join(",") + "|" + (transparent ? 1 : 0);
         if (matCache[key]) return matCache[key];
         var mats = faces.map(function (tn) {
@@ -166,6 +189,7 @@
     function singleMaterialFor(parsed, transparent, useTop) {
         var m = metaOf(parsed);
         var faces = (m && m.faces) || ["stone", "stone", "stone", "stone", "stone", "stone"];
+        transparent = transparent && isRealTransparent(parsed.base);
         var tn = useTop ? faces[2] : faces[0];
         var key = "S|" + tn + "|" + (transparent ? 1 : 0);
         if (matCache[key]) return matCache[key];
@@ -286,8 +310,9 @@
     }
 
     function geoPane(opts) {
-        // 玻璃板/铁栏杆: 中心立柱 + 四向薄横杆
+        // 玻璃板/铁栏杆: 中心立柱 + 四向横杆; solid=false (铁栏杆) 不渲染玻璃薄板
         var mask = opts.mask || 0;
+        var solid = opts.solid !== false;
         var geos = [];
         geos.push(boxGeo(0.12, 1, 0.12, 0, 0.5, 0));
         var ry = 0.55;
@@ -295,11 +320,13 @@
         if (mask & 2) geos.push(boxGeo(0.88, 0.12, 0.12, -0.25, ry, 0));
         if (mask & 4) geos.push(boxGeo(0.12, 0.12, 0.88, 0, ry, 0.25));
         if (mask & 8) geos.push(boxGeo(0.12, 0.12, 0.88, 0, ry, -0.25));
-        // 中心玻璃薄板 (横向延伸)
-        if (mask & 1) geos.push(boxGeo(0.9, 0.92, 0.1, 0.2, 0.46, 0));
-        if (mask & 2) geos.push(boxGeo(0.9, 0.92, 0.1, -0.2, 0.46, 0));
-        if (mask & 4) geos.push(boxGeo(0.1, 0.92, 0.9, 0, 0.46, 0.2));
-        if (mask & 8) geos.push(boxGeo(0.1, 0.92, 0.9, 0, 0.46, -0.2));
+        // 中心玻璃薄板 (仅玻璃板, 铁栏杆为骨架不渲染, 避免"铁丝网覆盖"视觉)
+        if (solid) {
+            if (mask & 1) geos.push(boxGeo(0.9, 0.92, 0.06, 0.2, 0.46, 0));
+            if (mask & 2) geos.push(boxGeo(0.9, 0.92, 0.06, -0.2, 0.46, 0));
+            if (mask & 4) geos.push(boxGeo(0.06, 0.92, 0.9, 0, 0.46, 0.2));
+            if (mask & 8) geos.push(boxGeo(0.06, 0.92, 0.9, 0, 0.46, -0.2));
+        }
         return mergeGeos(geos);
     }
 
@@ -327,12 +354,16 @@
 
     function geoCross(opts) {
         var h = opts.height || 0.8;
+        var flip = !!opts.flip; // 贴图上下翻转 (紫晶簇等尖端朝下)
         var g = new THREE.BufferGeometry();
         var p = [
             -0.5, 0, 0, 0.5, 0, 0, 0.5, h, 0, -0.5, 0, 0, 0.5, h, 0, -0.5, h, 0,
             0, 0, -0.5, 0, 0, 0.5, 0, h, 0.5, 0, 0, -0.5, 0, h, 0.5, 0, h, -0.5,
         ];
-        var uv = new Float32Array([
+        var uv = new Float32Array(flip ? [
+            0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1,
+            0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1,
+        ] : [
             0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0,
             0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0,
         ]);
@@ -520,6 +551,27 @@
         return m;
     }
 
+    // InstancedMesh 实例数上限 (WebGL1 65535, 留余量拆分为 30000)
+    var MAX_INST = 30000;
+    function makeInstanced(geo, mats, pts, halfW, halfL, yOff) {
+        var out = [];
+        var mat4 = new THREE.Matrix4();
+        var pos = new THREE.Vector3(), quat = new THREE.Quaternion(), scl = new THREE.Vector3(1, 1, 1);
+        for (var off = 0; off < pts.length; off += MAX_INST) {
+            var n = Math.min(MAX_INST, pts.length - off);
+            var im = new THREE.InstancedMesh(geo, mats, n);
+            for (var k = 0; k < n; k++) {
+                pos.set(pts[off + k][0] - halfW, pts[off + k][1] + (yOff || 0), pts[off + k][2] - halfL);
+                mat4.compose(pos, quat, scl);
+                im.setMatrixAt(k, mat4);
+            }
+            im.instanceMatrix.needsUpdate = true;
+            im.frustumCulled = false;
+            out.push(im);
+        }
+        return out;
+    }
+
     /* ================= 构建场景 ================= */
     function build(data, root) {
         var size = data.size;
@@ -577,7 +629,15 @@
             }
             if (shape === "fence") opts.mask = connMask(it.x, it.y, it.z, CONN_FENCE);
             if (shape === "wall") opts.mask = connMask(it.x, it.y, it.z, CONN_WALL);
-            if (shape === "pane") opts.mask = connMask(it.x, it.y, it.z, CONN_PANE);
+            if (shape === "pane") {
+                opts.mask = connMask(it.x, it.y, it.z, CONN_PANE);
+                // 铁栏杆只渲染骨架, 玻璃板带玻璃薄板
+                opts.solid = !/iron_bars/.test(base);
+            }
+            if (shape === "cross") {
+                // 紫晶簇/紫晶芽: 贴图上下翻转 (尖端朝下, 原版贴图方向)
+                opts.flip = /amethyst_cluster|amethyst_bud/.test(base);
+            }
             if (shape === "redstone") opts.mask = connMask(it.x, it.y, it.z, CONN_REDSTONE);
             if (shape === "rail") opts.railShape = p.states.shape || "north_south";
             if (shape === "button") opts.face = p.states.face || "floor";
@@ -612,17 +672,43 @@
                 mats = materialFor(parsed, transparent);
             }
 
-            var im = new THREE.InstancedMesh(geo, mats, pts.length);
-            var mat4 = new THREE.Matrix4();
-            var pos = new THREE.Vector3(), quat = new THREE.Quaternion(), scl = new THREE.Vector3(1, 1, 1);
-            for (var k = 0; k < pts.length; k++) {
-                pos.set(pts[k][0] - halfW, pts[k][1], pts[k][2] - halfL);
-                mat4.compose(pos, quat, scl);
-                im.setMatrixAt(k, mat4);
+            var ims = makeInstanced(geo, mats, pts, halfW, halfL, 0);
+            ims.forEach(function (im) { root.add(im); });
+
+            // 命令方块：追加紫色半透明外框（修正中心偏移，不再扁塌）
+            var isCmd = (parsed.base === "command_block" || parsed.base === "chain_command_block" || parsed.base === "repeating_command_block");
+            if (isCmd) {
+                var cbox = new THREE.BoxGeometry(1.08, 1.08, 1.08);
+                cbox.translate(0, 0.5, 0);
+                var cedge = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.08, 1.08, 1.08));
+                cedge.translate(0, 0.5, 0);
+                var cmdMesh = new THREE.InstancedMesh(cbox, new THREE.MeshLambertMaterial({ color: 0x9a6cff, transparent: true, opacity: 0.18, depthWrite: false }), pts.length);
+                var cmdMat4 = new THREE.Matrix4();
+                var ep = cedge.attributes.position.array;
+                var linePos = new Float32Array(pts.length * ep.length);
+                for (var k2 = 0; k2 < pts.length; k2++) {
+                    var cx = pts[k2][0] - halfW, cy = pts[k2][1] + 0.5, cz = pts[k2][2] - halfL;
+                    cmdMat4.makeTranslation(cx, cy, cz);
+                    cmdMesh.setMatrixAt(k2, cmdMat4);
+                    for (var j = 0; j < ep.length / 3; j++) {
+                        linePos[k2 * ep.length + j * 3] = ep[j * 3] + cx;
+                        linePos[k2 * ep.length + j * 3 + 1] = ep[j * 3 + 1] + cy;
+                        linePos[k2 * ep.length + j * 3 + 2] = ep[j * 3 + 2] + cz;
+                    }
+                }
+                cmdMesh.instanceMatrix.needsUpdate = true;
+                cmdMesh.frustumCulled = false;
+                cmdMesh.userData.cmd = true;
+                cmdMesh.userData.cmdPts = pts;
+                root.add(cmdMesh);
+                var clGeo = new THREE.BufferGeometry();
+                clGeo.setAttribute("position", new THREE.BufferAttribute(linePos, 3));
+                var cmdLines = new THREE.LineSegments(clGeo, new THREE.LineBasicMaterial({ color: 0xc9a6ff, transparent: true, opacity: 0.9 }));
+                cmdLines.frustumCulled = false;
+                cmdLines.userData.cmd = true;
+                cmdLines.userData.cmdPts = pts;
+                root.add(cmdLines);
             }
-            im.instanceMatrix.needsUpdate = true;
-            im.frustumCulled = false;
-            root.add(im);
         });
 
         // 特殊方块组 (默认隐藏)
@@ -648,7 +734,7 @@
                     return;
                 }
                 if (shape === "void") {
-                    mat = new THREE.MeshBasicMaterial({ color: 0x66ffcc, wireframe: true, transparent: true, opacity: 0.5 });
+                    mat = new THREE.MeshBasicMaterial({ color: 0x66ccff, wireframe: true, transparent: true, opacity: 0.5 });
                 } else { // light
                     mat = new THREE.MeshBasicMaterial({ color: 0xffdd66, transparent: true, opacity: 0.55, depthWrite: false });
                 }
@@ -675,43 +761,50 @@
     }
 
     function buildUI(data, total) {
-        // 底部控制条
+        // 底部控制条（v2 高级主题：深蓝灰 + 靛蓝点缀）
         var bar = document.createElement("div");
         bar.id = "cg-preview3d-bar";
-        bar.style.cssText = "flex:0 0 auto;display:flex;align-items:center;flex-wrap:wrap;gap:10px 18px;padding:10px 18px;background:rgba(10,16,22,0.92);border-top:1px solid rgba(140,220,170,0.18);font-size:13px;color:#b8d8c0;";
+        bar.style.cssText = "flex:0 0 auto;display:flex;align-items:center;flex-wrap:wrap;gap:10px 18px;padding:12px 20px;background:rgba(13,17,26,0.94);border-top:1px solid rgba(120,150,220,0.16);font-size:13px;color:#c8d4ee;backdrop-filter:blur(8px);";
 
-        function makeCheck(id, label, cb) {
+        function makeCheck(id, label, cb, def) {
             var lab = document.createElement("label");
-            lab.style.cssText = "display:inline-flex;align-items:center;gap:6px;cursor:pointer;user-select:none;color:#cfe8d6;";
+            lab.style.cssText = "display:inline-flex;align-items:center;gap:7px;cursor:pointer;user-select:none;color:#c8d4ee;";
             var chk = document.createElement("input");
             chk.type = "checkbox";
             chk.id = id;
-            chk.style.cssText = "accent-color:#7ed99a;width:15px;height:15px;cursor:pointer;";
+            chk.checked = !!def;
+            chk.style.cssText = "accent-color:#6c8cff;width:15px;height:15px;cursor:pointer;";
             chk.addEventListener("change", cb);
             var span = document.createElement("span");
             span.textContent = label;
             lab.appendChild(chk); lab.appendChild(span);
             bar.appendChild(lab);
+            return chk;
         }
 
-        makeCheck("cg-pv3d-light", "显示光源方块", function (e) {
+        makeCheck("cg-pv3d-light", "光源方块", function (e) {
             if (specialGroups.light) specialGroups.light.visible = e.target.checked;
         });
-        makeCheck("cg-pv3d-void", "显示结构空位", function (e) {
+        makeCheck("cg-pv3d-void", "结构空位", function (e) {
             if (specialGroups.void) specialGroups.void.visible = e.target.checked;
         });
-        makeCheck("cg-pv3d-barrier", "显示屏障方块", function (e) {
+        makeCheck("cg-pv3d-barrier", "屏障方块", function (e) {
             if (specialGroups.barrier) specialGroups.barrier.visible = e.target.checked;
         });
+        makeCheck("cg-pv3d-chunk", "区块边界 (16×16)", function (e) {
+            if (chunkLines) chunkLines.visible = e.target.checked;
+        }, true);
 
         var sep = document.createElement("span");
-        sep.style.cssText = "opacity:0.35;";
+        sep.style.cssText = "opacity:0.3;";
         sep.textContent = "|";
         bar.appendChild(sep);
 
         var btnReset = document.createElement("button");
         btnReset.textContent = "重置视角";
-        btnReset.style.cssText = "background:rgba(120,220,160,0.12);border:1px solid rgba(120,220,160,0.35);color:#a8e8bc;padding:3px 12px;cursor:pointer;border-radius:4px;font-size:12px;";
+        btnReset.style.cssText = "background:rgba(108,140,255,0.12);border:1px solid rgba(108,140,255,0.35);color:#a8bcff;padding:3px 14px;cursor:pointer;border-radius:6px;font-size:12px;transition:all .2s;";
+        btnReset.addEventListener("mouseenter", function () { btnReset.style.background = "rgba(108,140,255,0.22)"; });
+        btnReset.addEventListener("mouseleave", function () { btnReset.style.background = "rgba(108,140,255,0.12)"; });
         btnReset.addEventListener("click", resetCamera);
         bar.appendChild(btnReset);
 
@@ -726,11 +819,36 @@
         });
         bar.appendChild(btnAuto);
 
-        var info = document.createElement("span");
-        info.style.cssText = "margin-left:auto;color:#7fa890;font-size:12px;";
-        info.textContent = (total || 0) + " 方块 · " + Object.keys(data.name_ids).length + " 种 · " +
-            data.size.width + "×" + data.size.height + "×" + data.size.length + " · 拖动旋转 / 滚轮缩放 / 右键平移";
-        bar.appendChild(info);
+        // 信息统计面板（右侧）
+        var statWrap = document.createElement("div");
+        statWrap.style.cssText = "margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap;";
+        var chunks = Math.max(1, Math.ceil(data.size.width / 16)) * Math.max(1, Math.ceil(data.size.length / 16));
+        var nbtCnt = (data.entities && data.entities.length) || 0;
+        var cmdCnt = (data.command_block_count != null) ? data.command_block_count : ((data.entities || []).filter(function (e) { return /command_block/.test(e.name || ""); }).length);
+        var statDefs = [
+            ["方块", (total || 0).toLocaleString()],
+            ["区块", chunks],
+            ["NBT", nbtCnt],
+            ["命令", cmdCnt],
+            ["尺寸", data.size.width + "×" + data.size.height + "×" + data.size.length]
+        ];
+        statDefs.forEach(function (s) {
+            var chip = document.createElement("div");
+            chip.style.cssText = "display:inline-flex;align-items:baseline;gap:5px;background:rgba(108,140,255,0.08);border:1px solid rgba(108,140,255,0.18);border-radius:6px;padding:3px 10px;";
+            var k = document.createElement("span");
+            k.style.cssText = "color:#8a9bc8;font-size:11px;";
+            k.textContent = s[0];
+            var v = document.createElement("span");
+            v.style.cssText = "color:#e8eeff;font-weight:600;font-size:13px;font-variant-numeric:tabular-nums;";
+            v.textContent = s[1];
+            chip.appendChild(k); chip.appendChild(v);
+            statWrap.appendChild(chip);
+        });
+        var tip = document.createElement("span");
+        tip.style.cssText = "color:#5f6f96;font-size:11px;width:100%;";
+        tip.textContent = "拖动旋转 · 滚轮缩放 · 右键平移 · 点击方块查看 NBT";
+        statWrap.appendChild(tip);
+        bar.appendChild(statWrap);
 
         return bar;
     }
@@ -742,11 +860,11 @@
 
         container = document.createElement("div");
         container.id = "cg-preview3d";
-        container.style.cssText = "position:fixed;inset:0;z-index:9999;background:linear-gradient(180deg,#0b1218 0%,#101a24 100%);display:flex;flex-direction:column;font-family:'Segoe UI',system-ui,sans-serif;color:#cfe8d0;";
+        container.style.cssText = "position:fixed;inset:0;z-index:9999;background:linear-gradient(180deg,#0a0e18 0%,#101625 100%);display:flex;flex-direction:column;font-family:'Segoe UI',system-ui,sans-serif;color:#c8d4ee;";
         var header = document.createElement("div");
-        header.style.cssText = "flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;border-bottom:1px solid rgba(140,220,170,0.18);background:rgba(8,12,16,0.6);";
-        header.innerHTML = '<div style="font-size:15px;font-weight:600;color:#8aff9e;">3D 预览: ' + esc(data.filename || "") + '</div>' +
-            '<button id="cg-preview3d-close" style="background:rgba(200,60,60,0.16);border:1px solid rgba(255,120,120,0.4);color:#ffb0b0;padding:5px 16px;cursor:pointer;border-radius:5px;font-size:13px;">关闭 [Esc]</button>';
+        header.style.cssText = "flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 20px;border-bottom:1px solid rgba(120,150,220,0.16);background:rgba(10,13,22,0.72);backdrop-filter:blur(8px);";
+        header.innerHTML = '<div style="font-size:15px;font-weight:600;color:#e8eeff;display:flex;align-items:center;gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#6c8cff,#9a6cff);display:inline-block;"></span>3D 预览: ' + esc(data.filename || "") + '</div>' +
+            '<button id="cg-preview3d-close" style="background:rgba(220,80,90,0.14);border:1px solid rgba(255,130,140,0.35);color:#ffb8be;padding:5px 16px;cursor:pointer;border-radius:6px;font-size:13px;transition:all .2s;">关闭 [Esc]</button>';
         container.appendChild(header);
 
         var canvasHost = document.createElement("div");
@@ -756,8 +874,8 @@
 
         var loading = document.createElement("div");
         loading.id = "cg-preview3d-loading";
-        loading.style.cssText = "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#8fb8a0;z-index:2;";
-        loading.textContent = "正在加载原版贴图并构建 3D 场景…";
+        loading.style.cssText = "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#8fa3d0;z-index:2;background:rgba(10,14,24,0.5);";
+        loading.innerHTML = '<span style="display:inline-flex;align-items:center;gap:10px;"><span style="width:18px;height:18px;border:2px solid rgba(108,140,255,0.25);border-top-color:#6c8cff;border-radius:50%;animation:cgSpin 0.8s linear infinite;"></span>正在加载原版贴图并构建 3D 场景…</span>';
         canvasHost.appendChild(loading);
 
         var bar = buildUI(data, null);
@@ -773,11 +891,6 @@
         ensureAssets(function () {
             if (seq !== loadSeq) return;
             var total = initScene(canvasHost, data);
-            var info = bar.querySelector("span:last-child");
-            if (info) {
-                info.textContent = (total || 0) + " 方块 · " + Object.keys(data.name_ids).length + " 种 · " +
-                    data.size.width + "×" + data.size.height + "×" + data.size.length + " · 拖动旋转 / 滚轮缩放 / 右键平移";
-            }
             if (loading && loading.parentNode) loading.parentNode.removeChild(loading);
         });
     }
@@ -787,8 +900,24 @@
         var loadedItem = itemAtlasTex && itemMeta;
         if (loadedBlock && loadedItem) { cb(); return; }
         var pending = 0;
+        var fired = false;
         function done() {
-            if (--pending === 0) cb();
+            if (--pending === 0) fire();
+        }
+        function fire() {
+            if (fired) return;
+            fired = true;
+            cb();
+        }
+        function fallbackAtlas() {
+            if (atlasMeta && blockMeta && atlasTex) return;
+            blockMeta = blockMeta || {};
+            atlasMeta = atlasMeta || { tile: 32, cols: 32, textures: {} };
+            if (!atlasTex) {
+                var c = document.createElement("canvas"); c.width = 32; c.height = 32;
+                var ctx = c.getContext("2d"); ctx.fillStyle = "#8a8a8a"; ctx.fillRect(0, 0, 32, 32);
+                atlasTex = new THREE.CanvasTexture(c);
+            }
         }
         if (!loadedBlock) {
             pending++;
@@ -796,13 +925,12 @@
                 atlasMeta = meta;
                 blockMeta = meta.blocks;
                 var loader = new THREE.TextureLoader();
-                atlasTex = loader.load(ATLAS_IMG, done);
+                atlasTex = loader.load(ATLAS_IMG, done, undefined, function () {
+                    fallbackAtlas();
+                    done();
+                });
             }).catch(function () {
-                blockMeta = {};
-                atlasMeta = { tile: 32, cols: 32, textures: {} };
-                var c = document.createElement("canvas"); c.width = 32; c.height = 32;
-                var ctx = c.getContext("2d"); ctx.fillStyle = "#8a8a8a"; ctx.fillRect(0, 0, 32, 32);
-                atlasTex = new THREE.CanvasTexture(c);
+                fallbackAtlas();
                 done();
             });
         }
@@ -817,6 +945,10 @@
                         itemCols = Math.max(1, Math.floor(itemAtlasTex.image.width / ts));
                     }
                     done();
+                }, undefined, function () {
+                    itemMeta = null;
+                    itemAtlasTex = null;
+                    done();
                 });
             }).catch(function () {
                 itemMeta = null;
@@ -824,6 +956,8 @@
                 done();
             });
         }
+        // 兜底超时: 资源加载异常时最多等 20s, 防止 3D 预览一直转圈
+        setTimeout(fire, 20000);
     }
 
     function initScene(host, data) {
@@ -835,17 +969,17 @@
         host.appendChild(renderer.domElement);
 
         scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x0d151d);
+        scene.background = new THREE.Color(0x0b1120);
 
         var size = data.size;
         var maxDim = Math.max(size.width, size.height, size.length) || 1;
         camera = new THREE.PerspectiveCamera(52, w / h, 0.05, maxDim * 40);
         var dist = maxDim * 2.1 + 2;
         camera.position.set(dist * 0.72, dist * 0.6, dist * 0.72);
-        camera.lookAt(size.width / 2, size.height / 2, size.length / 2);
+        camera.lookAt(size.width / 2, size.height / 2 + 1, size.length / 2);
 
         controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.target.set(size.width / 2, size.height / 2, size.length / 2);
+        controls.target.set(size.width / 2, size.height / 2 + 1, size.length / 2);
         controls.enableDamping = true;
         controls.dampingFactor = 0.1;
         controls.minDistance = 0.5;
@@ -862,10 +996,52 @@
         fill.position.set(-maxDim, maxDim * 0.3, -maxDim);
         scene.add(fill);
 
-        // 网格辅助
+        // 底部玻璃底座：半透明灰色玻璃"方块"铺满整面（方块状，建筑坐在其上）
+        var gw = size.width, gl = size.length;
+        var gstep = (gw * gl > 250000) ? 2 : 1;   // 超大底座用 2×2 玻璃块合并, 避免实例过多
+        var glassItems = [];
+        for (var ggx = 0; ggx < gw; ggx += gstep) {
+            for (var ggz = 0; ggz < gl; ggz += gstep) {
+                glassItems.push([ggx + (gstep - 1) / 2, 0, ggz + (gstep - 1) / 2]);
+            }
+        }
+        var glassGeo = new THREE.BoxGeometry(gstep, 1, gstep);
+        var glassMat = new THREE.MeshLambertMaterial({
+            color: 0x9aa7bd,
+            transparent: true,
+            opacity: 0.38,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        var glassIMS = makeInstanced(glassGeo, glassMat, glassItems, gw / 2, gl / 2, 0.5);
+        glassIMS.forEach(function (im) { scene.add(im); });
+        // 玻璃底座外框描边（贴顶面）
+        var glassEdge = new THREE.EdgesGeometry(new THREE.BoxGeometry(gw, 1, gl));
+        glassEdge.translate(0, 0.5, 0);
+        var glassLine = new THREE.LineSegments(glassEdge, new THREE.LineBasicMaterial({ color: 0x6c8cff, transparent: true, opacity: 0.45 }));
+        glassLine.position.set(0, 0, 0);
+        scene.add(glassLine);
+
+        // 区块边界线（16×16）：直接覆盖整个玻璃面顶面，不管上面有无建筑，默认显示
+        chunkLines = new THREE.Group();
+        var lineMat = new THREE.LineBasicMaterial({ color: 0x6c8cff, transparent: true, opacity: 0.30 });
+        var lineMatStrong = new THREE.LineBasicMaterial({ color: 0x9ab0ff, transparent: true, opacity: 0.6 });
+        var maxX = Math.ceil(gw / 16) * 16, maxZ = Math.ceil(gl / 16) * 16;
+        var ly = 1.02;
+        for (var cx = 0; cx <= maxX; cx += 16) {
+            var geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(cx - maxX / 2, ly, -maxZ / 2), new THREE.Vector3(cx - maxX / 2, ly, maxZ / 2)]);
+            chunkLines.add(new THREE.Line(geo, cx % 16 === 0 ? lineMatStrong : lineMat));
+        }
+        for (var cz = 0; cz <= maxZ; cz += 16) {
+            var geo2 = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-maxX / 2, ly, cz - maxZ / 2), new THREE.Vector3(maxX / 2, ly, cz - maxZ / 2)]);
+            chunkLines.add(new THREE.Line(geo2, cz % 16 === 0 ? lineMatStrong : lineMat));
+        }
+        scene.add(chunkLines);
+
+        // 网格辅助（淡化，做玻璃底座下的弱参考）
         var gridSize = Math.max(size.width, size.length);
-        var grid = new THREE.GridHelper(gridSize, Math.min(48, gridSize), 0x2a6a48, 0x183a2a);
-        grid.position.y = -0.02;
+        var grid = new THREE.GridHelper(gridSize, Math.min(48, gridSize), 0x2a3a5c, 0x182438);
+        grid.position.y = -0.03;
         scene.add(grid);
 
         rootGroup = new THREE.Group();
@@ -884,10 +1060,30 @@
             raycaster.setFromCamera(mouse, camera);
             var hits = raycaster.intersectObject(rootGroup, true);
             if (!hits.length) return;
-            var p = hits[0].point;
-            var bx = Math.floor(p.x + _camTarget.width / 2 + 0.001);
-            var by = Math.floor(p.y + 0.001);
-            var bz = Math.floor(p.z + _camTarget.length / 2 + 0.001);
+            var bx, by, bz;
+            // 优先取有实例索引的命令方块外框命中(InstancedMesh), LineSegments 线框无 instanceId 会定位到第 0 个, 必须跳过
+            var pick = null;
+            for (var i = 0; i < hits.length; i++) {
+                var h = hits[i];
+                if (h.object && h.object.userData && h.object.userData.cmd) {
+                    if (h.instanceId != null) { pick = h; break; }
+                    continue; // cmdLines 线框: 忽略, 继续找更深命中
+                }
+                if (!pick) pick = h;
+            }
+            var hit = pick || hits[0];
+            if (hit.object && hit.object.userData && hit.object.userData.cmd) {
+                var pts = hit.object.userData.cmdPts || [];
+                var instId = (hit.instanceId != null) ? hit.instanceId : 0;
+                var cp = pts[Math.min(instId, pts.length - 1)];
+                if (cp) { bx = cp[0]; by = cp[1]; bz = cp[2]; }
+            }
+            if (bx == null) {
+                var p = hit.point;
+                bx = Math.floor(p.x + _camTarget.width / 2 + 0.001);
+                by = Math.floor(p.y - 0.5 + 0.001);
+                bz = Math.floor(p.z + _camTarget.length / 2 + 0.001);
+            }
             var ent = entityByPos[bx + "," + by + "," + bz];
             if (ent) openEntityUI(ent, data);
         };
@@ -1066,9 +1262,16 @@
         var name = ent.name || "";
         var title = zh(BLOCK_ZH, name, name.replace(/^minecraft:/, ""));
         var id = nbt.id || "";
+        // 命令方块: 优先按 NBT id 判断, 兜底按方块名判断(部分格式命令方块 NBT 无 id 字段)
+        var isCmdByName = /command_block/i.test(name);
+        // BDX 命令方块 NBT 结构为 {CommandBlockData:{...}}, 展开后按命令方块渲染
+        if (nbt.CommandBlockData && typeof nbt.CommandBlockData === "object") {
+            buildCommand(title, nbt.CommandBlockData);
+            return;
+        }
         if (/Lectern/i.test(id)) { buildLectern(title, nbt); return; }
         if (/Cauldron/i.test(id)) { buildCauldron(title, nbt); return; }
-        if (/CommandBlock/i.test(id)) { buildCommand(title, nbt); return; }
+        if (/CommandBlock/i.test(id) || isCmdByName) { buildCommand(title, nbt); return; }
         if (/Beehive|BeeNest/i.test(id)) { buildBeehive(title, nbt); return; }
         if (/Chest|Barrel|Shulker|Dispenser|Dropper|Hopper|Furnace|Smoker|BlastFurnace|BrewingStand|Campfire|Crafter|Jukebox|Beacon/i.test(id)) {
             var slots = containerItems(nbt);
@@ -1248,7 +1451,7 @@
         var maxDim = Math.max(size.width, size.height, size.length) || 1;
         var dist = maxDim * 2.1 + 2;
         camera.position.set(dist * 0.72, dist * 0.6, dist * 0.72);
-        controls.target.set(size.width / 2, size.height / 2, size.length / 2);
+        controls.target.set(size.width / 2, size.height / 2 + 1, size.length / 2);
         controls.update();
     }
 
@@ -1277,6 +1480,14 @@
         scene = null; camera = null; rootGroup = null; posBase = null;
         specialGroups = { barrier: null, void: null, light: null };
         entityByPos = {};
+        chunkLines = null;
+    }
+
+    // spinner 动画（loading 用）
+    if (typeof document !== "undefined") {
+        var cgStyle = document.createElement("style");
+        cgStyle.textContent = "@keyframes cgSpin{to{transform:rotate(360deg)}}";
+        document.head.appendChild(cgStyle);
     }
 
     window.CGPreview3D = { open: open, close: close };
