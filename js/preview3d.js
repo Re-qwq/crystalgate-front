@@ -22,11 +22,15 @@
     var ASSETS = "/assets/textures";
     var ATLAS_IMG = ASSETS + "/atlas.png";
     var ATLAS_JSON = ASSETS + "/block_textures.json";
+    var ITEM_ATLAS_IMG = ASSETS + "/item_atlas.png";
+    var ITEM_ATLAS_JSON = ASSETS + "/item_textures.json";
 
     var container = null, renderer = null, scene = null, camera = null, controls = null;
     var atlasTex = null, atlasMeta = null, blockMeta = null;
+    var itemAtlasTex = null, itemMeta = null, itemCols = 32;
     var rootGroup = null, specialGroups = { barrier: null, void: null, light: null };
     var loadSeq = 0, built = false;
+    var entityByPos = {};
 
     var geoCache = {};          // shape+key -> BufferGeometry
     var matCache = {};          // base+faces+transparent -> MeshLambertMaterial[]
@@ -542,6 +546,15 @@
         var half = { x: w / 2, y: h / 2, z: l / 2 };
         var halfW = w / 2, halfH = h / 2, halfL = l / 2;
 
+        // NBT 实体索引: "x,y,z" -> {name, nbt} (结构坐标, 归一化后)
+        entityByPos = {};
+        if (data.entities && data.entities.length) {
+            data.entities.forEach(function (e) {
+                var p = e.pos || [];
+                if (p.length >= 3) entityByPos[p[0] + "," + p[1] + "," + p[2]] = e;
+            });
+        }
+
         // 按 (base, shape, mask, opts) 分组
         var groups = {};
         var specialItems = { barrier: [], void: [], light: [] };
@@ -770,21 +783,47 @@
     }
 
     function ensureAssets(cb) {
-        if (atlasTex && atlasMeta && blockMeta) { cb(); return; }
-        fetch(ATLAS_JSON).then(function (r) { return r.json(); }).then(function (meta) {
-            atlasMeta = meta;
-            blockMeta = meta.blocks;
-            var loader = new THREE.TextureLoader();
-            atlasTex = loader.load(ATLAS_IMG, function () { cb(); });
-        }).catch(function () {
-            // 兜底: 无贴图时纯色
-            blockMeta = {};
-            atlasMeta = { tile: 32, cols: 32, textures: {} };
-            var c = document.createElement("canvas"); c.width = 32; c.height = 32;
-            var ctx = c.getContext("2d"); ctx.fillStyle = "#8a8a8a"; ctx.fillRect(0, 0, 32, 32);
-            atlasTex = new THREE.CanvasTexture(c);
-            cb();
-        });
+        var loadedBlock = atlasTex && atlasMeta && blockMeta;
+        var loadedItem = itemAtlasTex && itemMeta;
+        if (loadedBlock && loadedItem) { cb(); return; }
+        var pending = 0;
+        function done() {
+            if (--pending === 0) cb();
+        }
+        if (!loadedBlock) {
+            pending++;
+            fetch(ATLAS_JSON).then(function (r) { return r.json(); }).then(function (meta) {
+                atlasMeta = meta;
+                blockMeta = meta.blocks;
+                var loader = new THREE.TextureLoader();
+                atlasTex = loader.load(ATLAS_IMG, done);
+            }).catch(function () {
+                blockMeta = {};
+                atlasMeta = { tile: 32, cols: 32, textures: {} };
+                var c = document.createElement("canvas"); c.width = 32; c.height = 32;
+                var ctx = c.getContext("2d"); ctx.fillStyle = "#8a8a8a"; ctx.fillRect(0, 0, 32, 32);
+                atlasTex = new THREE.CanvasTexture(c);
+                done();
+            });
+        }
+        if (!loadedItem) {
+            pending++;
+            fetch(ITEM_ATLAS_JSON).then(function (r) { return r.json(); }).then(function (meta) {
+                itemMeta = meta;
+                var loader = new THREE.TextureLoader();
+                itemAtlasTex = loader.load(ITEM_ATLAS_IMG, function () {
+                    if (itemAtlasTex && itemAtlasTex.image) {
+                        var ts = (itemMeta && itemMeta.tile) || 32;
+                        itemCols = Math.max(1, Math.floor(itemAtlasTex.image.width / ts));
+                    }
+                    done();
+                });
+            }).catch(function () {
+                itemMeta = null;
+                itemAtlasTex = null;
+                done();
+            });
+        }
     }
 
     function initScene(host, data) {
@@ -832,13 +871,377 @@
         rootGroup = new THREE.Group();
         scene.add(rootGroup);
         var total = build(data, rootGroup);
+        _camTarget = data.size;
 
-        // 相框/边缘 (可选)
+        // 点击检测 NBT 方块
+        var raycaster = new THREE.Raycaster();
+        var mouse = new THREE.Vector2();
+        var onClick = function (ev) {
+            if (!renderer || !scene || !rootGroup) return;
+            var rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            var hits = raycaster.intersectObject(rootGroup, true);
+            if (!hits.length) return;
+            var p = hits[0].point;
+            var bx = Math.floor(p.x + _camTarget.width / 2 + 0.001);
+            var by = Math.floor(p.y + 0.001);
+            var bz = Math.floor(p.z + _camTarget.length / 2 + 0.001);
+            var ent = entityByPos[bx + "," + by + "," + bz];
+            if (ent) openEntityUI(ent, data);
+        };
+        renderer.domElement.addEventListener("click", onClick);
+        _onClick = onClick;
+
         animate();
         return total;
     }
 
+    // ================= NBT 交互 UI =================
+    var ITEM_ZH = {
+        "minecraft:diamond_sword": "钻石剑", "minecraft:diamond": "钻石", "minecraft:enchanted_book": "附魔书",
+        "minecraft:cooked_beef": "牛排", "minecraft:shulker_shell": "潜影壳", "minecraft:purpur_block": "紫珀块",
+        "minecraft:written_book": "成书", "minecraft:writable_book": "书与笔", "minecraft:book": "书",
+        "minecraft:stick": "木棍", "minecraft:apple": "苹果", "minecraft:golden_apple": "金苹果",
+        "minecraft:emerald": "绿宝石", "minecraft:iron_ingot": "铁锭", "minecraft:gold_ingot": "金锭",
+        "minecraft:diamond_pickaxe": "钻石镐", "minecraft:bow": "弓", "minecraft:arrow": "箭",
+        "minecraft:ender_pearl": "末影珍珠", "minecraft:elytra": "鞘翅", "minecraft:totem_of_undying": "不死图腾",
+        "minecraft:name_tag": "命名牌", "minecraft:paper": "纸", "minecraft:map": "地图",
+        "minecraft:redstone": "红石粉", "minecraft:redstone_block": "红石块", "minecraft:command_block_minecart": "命令方块矿车"
+    };
+    var ENCH_ZH = {
+        "sharpness": "锋利", "smite": "亡灵杀手", "bane_of_arthropods": "节肢杀手", "knockback": "击退",
+        "fire_aspect": "火焰附加", "looting": "抢夺", "sweeping": "横扫之刃", "efficiency": "效率",
+        "silk_touch": "精准采集", "unbreaking": "耐久", "fortune": "时运", "power": "力量",
+        "punch": "冲击", "flame": "火矢", "infinity": "无限", "luck_of_the_sea": "海之眷顾",
+        "lure": "饵钓", "protection": "保护", "fire_protection": "火焰保护", "blast_protection": "爆炸保护",
+        "projectile_protection": "弹射物保护", "feather_falling": "摔落保护", "respiration": "水下呼吸",
+        "aqua_affinity": "水下速掘", "thorns": "荆棘", "depth_strider": "深海探索者", "frost_walker": "冰霜行者",
+        "curse_of_binding": "绑定诅咒", "curse_of_vanishing": "消失诅咒", "mending": "经验修补",
+        "channeling": "引雷", "impaling": "穿刺", "loyalty": "忠诚", "riptide": "激流",
+        "multishot": "多重射击", "piercing": "穿透", "quick_charge": "快速装填", "soul_speed": "灵魂疾行",
+        "swift_sneak": "迅捷潜行"
+    };
+    var BLOCK_ZH = {
+        "minecraft:chest": "箱子", "minecraft:trapped_chest": "陷阱箱", "minecraft:barrel": "木桶",
+        "minecraft:shulker_box": "潜影盒", "minecraft:white_shulker_box": "白色潜影盒", "minecraft:orange_shulker_box": "橙色潜影盒",
+        "minecraft:magenta_shulker_box": "品红色潜影盒", "minecraft:light_blue_shulker_box": "淡蓝色潜影盒",
+        "minecraft:yellow_shulker_box": "黄色潜影盒", "minecraft:lime_shulker_box": "黄绿色潜影盒",
+        "minecraft:pink_shulker_box": "粉红色潜影盒", "minecraft:gray_shulker_box": "灰色潜影盒",
+        "minecraft:light_gray_shulker_box": "淡灰色潜影盒", "minecraft:cyan_shulker_box": "青色潜影盒",
+        "minecraft:purple_shulker_box": "紫色潜影盒", "minecraft:blue_shulker_box": "蓝色潜影盒",
+        "minecraft:brown_shulker_box": "棕色潜影盒", "minecraft:green_shulker_box": "绿色潜影盒",
+        "minecraft:red_shulker_box": "红色潜影盒", "minecraft:black_shulker_box": "黑色潜影盒",
+        "minecraft:lectern": "讲台", "minecraft:cauldron": "炼药锅", "minecraft:chain_command_block": "连锁命令方块",
+        "minecraft:command_block": "命令方块", "minecraft:repeating_command_block": "循环命令方块",
+        "minecraft:beehive": "蜂巢", "minecraft:bee_nest": "蜂房", "minecraft:dispenser": "发射器",
+        "minecraft:dropper": "投掷器", "minecraft:hopper": "漏斗", "minecraft:furnace": "熔炉",
+        "minecraft:blast_furnace": "高炉", "minecraft:smoker": "烟熏炉", "minecraft:brewing_stand": "酿造台",
+        "minecraft:jukebox": "唱片机", "minecraft:beacon": "信标", "minecraft:campfire": "营火",
+        "minecraft:crafter": "合成器", "minecraft:structure_block": "结构方块", "minecraft:item_frame": "物品展示框",
+        "minecraft:glow_item_frame": "荧光物品展示框", "minecraft:spawner": "刷怪笼", "minecraft:sign": "告示牌"
+    };
+    function zh(zhMap, key, fallback) {
+        if (!key) return fallback || "";
+        var short = key.replace(/^minecraft:/, "");
+        if (zhMap[key]) return zhMap[key] + " (" + short + ")";
+        return short;
+    }
+    function enchName(id, lvl) {
+        var cn = ENCH_ZH[id] ? ENCH_ZH[id] : id;
+        return cn + " " + (["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][(lvl || 1) - 1] || lvl);
+    }
+
+    function itemTileIndex(id) {
+        if (!itemMeta || !itemMeta.items || !id) return -1;
+        var m = itemMeta.items[id];
+        if (!m || !m.pixel) return -1;
+        var ts = itemMeta.tile || 32;
+        var col = Math.floor(m.pixel[0] / ts);
+        var row = Math.floor(m.pixel[1] / ts);
+        return row * itemCols + col;
+    }
+    function drawItemIcon(canvas, id) {
+        var ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (!itemAtlasTex || !itemAtlasTex.image) {
+            ctx.fillStyle = "#5a5a5a"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#cfcfcf"; ctx.font = "9px sans-serif"; ctx.textAlign = "center";
+            ctx.fillText("?", canvas.width / 2, canvas.height / 2 + 3);
+            return;
+        }
+        var ti = itemTileIndex(id);
+        if (ti < 0) {
+            ctx.fillStyle = "#5a5a5a"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#cfcfcf"; ctx.font = "9px sans-serif"; ctx.textAlign = "center";
+            ctx.fillText("?", canvas.width / 2, canvas.height / 2 + 3);
+            return;
+        }
+        var ts = itemMeta.tile || 32;
+        var sx = (ti % itemCols) * ts;
+        var sy = Math.floor(ti / itemCols) * ts;
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(itemAtlasTex.image, sx, sy, ts, ts, 0, 0, canvas.width, canvas.height);
+    }
+
+    function makeSlot(it, size) {
+        var cell = document.createElement("div");
+        cell.className = "cg-slot";
+        cell.style.width = size + "px";
+        cell.style.height = size + "px";
+        if (!it) return cell;
+        var cv = document.createElement("canvas");
+        cv.width = size; cv.height = size;
+        drawItemIcon(cv, it.Name || "");
+        cell.appendChild(cv);
+        if (it.Count && it.Count > 1) {
+            var cnt = document.createElement("span");
+            cnt.className = "cg-slot-count";
+            cnt.textContent = it.Count;
+            cell.appendChild(cnt);
+        }
+        var ench = it.Enchantments || [];
+        if (ench.length) cell.classList.add("cg-ench");
+        var tooltip = [];
+        tooltip.push(zh(ITEM_ZH, it.Name, it.Name || "未知物品"));
+        var dmg = it.Damage;
+        if (dmg) tooltip.push("耐久 " + dmg);
+        ench.forEach(function (e) { tooltip.push(enchName(e.id, e.level)); });
+        if (it.tag && it.tag.title) tooltip.push("书名: " + it.tag.title);
+        cell.title = tooltip.join("\n");
+        return cell;
+    }
+
+    function panel(title, body) {
+        var mask = document.createElement("div");
+        mask.className = "cg-nbt-mask";
+        var box = document.createElement("div");
+        box.className = "cg-nbt-panel";
+        var head = document.createElement("div");
+        head.className = "cg-nbt-head";
+        var t = document.createElement("span");
+        t.textContent = title;
+        head.appendChild(t);
+        var closeBtn = document.createElement("button");
+        closeBtn.className = "cg-nbt-close";
+        closeBtn.textContent = "×";
+        closeBtn.addEventListener("click", function () { mask.remove(); });
+        head.appendChild(closeBtn);
+        box.appendChild(head);
+        box.appendChild(body);
+        mask.appendChild(box);
+        mask.addEventListener("click", function (ev) { if (ev.target === mask) mask.remove(); });
+        var esc = function (ev) { if (ev.key === "Escape") mask.remove(); };
+        document.addEventListener("keydown", esc);
+        mask._esc = esc;
+        (container || document.body).appendChild(mask);
+        return mask;
+    }
+
+    function gridBody(slots, cols) {
+        var g = document.createElement("div");
+        g.className = "cg-nbt-grid";
+        g.style.gridTemplateColumns = "repeat(" + cols + ", 52px)";
+        slots.forEach(function (it) { g.appendChild(makeSlot(it, 48)); });
+        return g;
+    }
+
+    function containerItems(nbt) {
+        var items = (nbt && nbt.Items) || [];
+        var map = {};
+        items.forEach(function (it) {
+            if (it && typeof it.Slot === "number") map[it.Slot] = it;
+        });
+        var out = [];
+        var maxSlot = 53;
+        items.forEach(function (it) { if (it && it.Slot > maxSlot) maxSlot = it.Slot; });
+        for (var i = 0; i <= maxSlot; i++) out.push(map[i] || null);
+        return out;
+    }
+
+    function openEntityUI(ent, data) {
+        if (!ent || !ent.nbt) return;
+        var nbt = ent.nbt;
+        var name = ent.name || "";
+        var title = zh(BLOCK_ZH, name, name.replace(/^minecraft:/, ""));
+        var id = nbt.id || "";
+        if (/Lectern/i.test(id)) { buildLectern(title, nbt); return; }
+        if (/Cauldron/i.test(id)) { buildCauldron(title, nbt); return; }
+        if (/CommandBlock/i.test(id)) { buildCommand(title, nbt); return; }
+        if (/Beehive|BeeNest/i.test(id)) { buildBeehive(title, nbt); return; }
+        if (/Chest|Barrel|Shulker|Dispenser|Dropper|Hopper|Furnace|Smoker|BlastFurnace|BrewingStand|Campfire|Crafter|Jukebox|Beacon/i.test(id)) {
+            var slots = containerItems(nbt);
+            var cols = slots.length > 30 ? 9 : (slots.length > 12 ? 9 : Math.max(1, Math.min(9, slots.length)));
+            panel(title, gridBody(slots, cols));
+            return;
+        }
+        buildGeneric(title, nbt);
+    }
+
+    function buildLectern(title, nbt) {
+        var book = nbt.Book || {};
+        var pages = (book.tag && book.tag.pages) || [];
+        var body = document.createElement("div");
+        body.className = "cg-lectern";
+        var titleEl = document.createElement("div");
+        titleEl.className = "cg-book-title";
+        titleEl.textContent = (book.tag && book.tag.title) ? book.tag.title : (book.Name || "无书");
+        var authorEl = document.createElement("div");
+        authorEl.className = "cg-book-author";
+        authorEl.textContent = (book.tag && book.tag.author) ? "作者: " + book.tag.author : "";
+        body.appendChild(titleEl);
+        body.appendChild(authorEl);
+        var pageEl = document.createElement("div");
+        pageEl.className = "cg-book-page";
+        var pageNum = document.createElement("span");
+        pageNum.className = "cg-book-page-num";
+        var pi = 0;
+        function renderPage() {
+            if (!pages.length) { pageEl.textContent = "（空白书页）"; return; }
+            pageEl.textContent = pages[pi];
+            pageNum.textContent = (pi + 1) + " / " + pages.length;
+        }
+        body.appendChild(pageEl);
+        var nav = document.createElement("div");
+        nav.className = "cg-book-nav";
+        var prev = document.createElement("button");
+        prev.textContent = "◀ 上一页";
+        prev.addEventListener("click", function () { if (pages.length) { pi = (pi - 1 + pages.length) % pages.length; renderPage(); } });
+        var next = document.createElement("button");
+        next.textContent = "下一页 ▶";
+        next.addEventListener("click", function () { if (pages.length) { pi = (pi + 1) % pages.length; renderPage(); } });
+        nav.appendChild(prev); nav.appendChild(pageNum); nav.appendChild(next);
+        body.appendChild(nav);
+        renderPage();
+        panel(title, body);
+    }
+
+    function buildCauldron(title, nbt) {
+        var body = document.createElement("div");
+        body.className = "cg-cauldron";
+        var level = nbt.WaterLevel;
+        if (typeof level !== "number") level = 0;
+        var bar = document.createElement("div");
+        bar.className = "cg-cauldron-bar";
+        var fill = document.createElement("div");
+        fill.className = "cg-cauldron-fill";
+        fill.style.width = Math.max(0, Math.min(100, level * 33.3)) + "%";
+        bar.appendChild(fill);
+        body.appendChild(bar);
+        var info = document.createElement("div");
+        info.className = "cg-cauldron-info";
+        var potion = nbt.PotionId || nbt.PotionType || "";
+        info.textContent = potion ? ("药水: " + potion) : (level > 0 ? ("水位: " + level + "/3") : "空炼药锅");
+        body.appendChild(info);
+        var items = (nbt.Items || []).filter(function (it) { return it; });
+        if (items.length) {
+            var g = document.createElement("div");
+            g.className = "cg-nbt-grid";
+            g.style.gridTemplateColumns = "repeat(" + Math.min(3, items.length) + ", 52px)";
+            items.forEach(function (it) { g.appendChild(makeSlot(it, 48)); });
+            body.appendChild(g);
+        }
+        panel(title, body);
+    }
+
+    function buildCommand(title, nbt) {
+        var body = document.createElement("div");
+        body.className = "cg-command";
+        var cmd = document.createElement("div");
+        cmd.className = "cg-command-text";
+        cmd.textContent = nbt.Command || "/（无命令）";
+        body.appendChild(cmd);
+        var props = [
+            ["循环", nbt.auto ? "开" : "关"],
+            ["条件", nbt.conditionalMode ? "开" : "关"],
+            ["首次激活时执行", nbt.ExecuteOnFirstTick ? "开" : "关"],
+            ["延迟", nbt.TickDelay != null ? nbt.TickDelay : "-"],
+            ["记录输出", nbt.TrackOutput ? "开" : "关"]
+        ];
+        var tbl = document.createElement("table");
+        tbl.className = "cg-prop-table";
+        props.forEach(function (p) {
+            var tr = document.createElement("tr");
+            var k = document.createElement("td"); k.textContent = p[0];
+            var v = document.createElement("td"); v.textContent = p[1];
+            tr.appendChild(k); tr.appendChild(v);
+            tbl.appendChild(tr);
+        });
+        body.appendChild(tbl);
+        if (nbt.CustomName) {
+            var cn = document.createElement("div");
+            cn.className = "cg-command-name";
+            cn.textContent = "名称: " + nbt.CustomName;
+            body.appendChild(cn);
+        }
+        panel(title, body);
+    }
+
+    function buildBeehive(title, nbt) {
+        var body = document.createElement("div");
+        body.className = "cg-beehive";
+        var bees = (nbt.Bees || []).filter(function (b) { return b; });
+        var info = document.createElement("div");
+        info.className = "cg-beehive-info";
+        var honey = nbt.HoneyLevel != null ? nbt.HoneyLevel : "-";
+        info.textContent = "蜜蜂数量: " + bees.length + "  |  蜂蜜等级: " + honey;
+        body.appendChild(info);
+        panel(title, body);
+    }
+
+    function buildGeneric(title, nbt) {
+        var body = document.createElement("div");
+        body.className = "cg-generic";
+        function addKey(k, v, depth) {
+            var row = document.createElement("div");
+            row.className = "cg-kv-row";
+            row.style.paddingLeft = (depth * 14) + "px";
+            var kk = document.createElement("span");
+            kk.className = "cg-kv-key";
+            kk.textContent = k + ": ";
+            var vv = document.createElement("span");
+            vv.className = "cg-kv-val";
+            if (Array.isArray(v)) {
+                row.appendChild(kk);
+                vv.textContent = "[ " + v.length + " 项 ]";
+                row.appendChild(vv);
+                body.appendChild(row);
+                v.forEach(function (it, i) {
+                    if (it && typeof it === "object") addKey("[" + i + "]", it, depth + 1);
+                    else {
+                        var r2 = document.createElement("div");
+                        r2.className = "cg-kv-row";
+                        r2.style.paddingLeft = ((depth + 1) * 14) + "px";
+                        var vv2 = document.createElement("span");
+                        vv2.className = "cg-kv-val";
+                        vv2.textContent = String(it);
+                        r2.appendChild(vv2);
+                        body.appendChild(r2);
+                    }
+                });
+            } else if (v && typeof v === "object") {
+                row.appendChild(kk);
+                vv.textContent = "{ }";
+                row.appendChild(vv);
+                body.appendChild(row);
+                Object.keys(v).forEach(function (sk) { addKey(sk, v[sk], depth + 1); });
+            } else {
+                row.appendChild(kk);
+                vv.textContent = String(v);
+                row.appendChild(vv);
+                body.appendChild(row);
+            }
+        }
+        Object.keys(nbt).forEach(function (k) {
+            if (k === "id") return;
+            addKey(k, nbt[k], 0);
+        });
+        panel(title, body);
+    }
+
     var _camTarget = null;
+    var _onClick = null;
     function resetCamera() {
         if (!camera || !controls) return;
         var size = _camTarget || { width: 10, height: 10, length: 10 };
@@ -863,10 +1266,17 @@
             if (container.parentNode) container.parentNode.removeChild(container);
             container = null;
         }
-        if (renderer) { renderer.dispose(); renderer = null; }
+        if (renderer) {
+            if (_onClick && renderer.domElement) {
+                renderer.domElement.removeEventListener("click", _onClick);
+            }
+            renderer.dispose(); renderer = null;
+        }
+        _onClick = null;
         if (controls) { controls.dispose(); controls = null; }
         scene = null; camera = null; rootGroup = null; posBase = null;
         specialGroups = { barrier: null, void: null, light: null };
+        entityByPos = {};
     }
 
     window.CGPreview3D = { open: open, close: close };
