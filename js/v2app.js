@@ -1542,26 +1542,40 @@
 
         const dropZone = $("parserDropZone");
         const fileInput = $("parserFileInput");
+        const fileLabel = $("parserSelectedFile");
         if (!dropZone || !fileInput) return;
+
+        function markParserFile(name) {
+            if (!fileLabel) return;
+            if (name) {
+                fileLabel.textContent = name;
+                dropZone.classList.add("has-file");
+            } else {
+                fileLabel.textContent = "未选择文件";
+                dropZone.classList.remove("has-file");
+            }
+        }
 
         dropZone.addEventListener("click", () => fileInput.click());
         fileInput.addEventListener("change", (e) => {
             if (e.target.files && e.target.files.length) {
+                markParserFile(e.target.files[0].name);
                 handleParserFile(e.target.files[0]);
                 fileInput.value = "";
             }
         });
         dropZone.addEventListener("dragover", (e) => {
             e.preventDefault();
-            dropZone.style.borderColor = "var(--color-primary)";
+            dropZone.classList.add("drag-over");
         });
         dropZone.addEventListener("dragleave", () => {
-            dropZone.style.borderColor = "var(--border-default)";
+            dropZone.classList.remove("drag-over");
         });
         dropZone.addEventListener("drop", (e) => {
             e.preventDefault();
-            dropZone.style.borderColor = "var(--border-default)";
+            dropZone.classList.remove("drag-over");
             if (e.dataTransfer.files && e.dataTransfer.files.length) {
+                markParserFile(e.dataTransfer.files[0].name);
                 handleParserFile(e.dataTransfer.files[0]);
             }
         });
@@ -1569,7 +1583,7 @@
         if (refreshBtn) {
             refreshBtn.addEventListener("click", () => {
                 resetParserResult();
-                loadParserServerFiles();
+                markParserFile(null);
                 toastInfo("已重置, 请重新选择文件");
             });
         }
@@ -1583,68 +1597,6 @@
             });
         }
         resetParserResult();
-        loadParserServerFiles();
-    }
-
-    async function loadParserServerFiles(dirPath) {
-        const box = $("parserServerFiles");
-        if (!box) return;
-        try {
-            const q = dirPath ? "path=" + encodeURIComponent(dirPath) : "path=structures";
-            const data = await api("/api/v2/files/browse?" + q, { timeout: 15000 });
-            const dirs = (data && data.dirs) || [];
-            const files = (data && data.files) || [];
-            const SUPPORTED = [".bdx",".mcworld",".mcstructure",".schematic",".schem",".litematic",".nbt",
-                ".kbdx",".fuhong",".gangban",".axiombp",".nexus",".nexus_np",".bcf",".tibi",".bds",
-                ".mianyang",".covstructure",".runaway",".qingxu",".timebuilder",".construction",".ibimport"];
-            const list = files.filter(f => SUPPORTED.some(ext => f.name.toLowerCase().endsWith(ext)));
-            if (!dirs.length && !list.length) {
-                box.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-tertiary);font-size:13px;">该目录暂无建筑文件</div>';
-                return;
-            }
-            box.innerHTML = "";
-            // 返回上级
-            if (dirPath && dirPath !== "structures") {
-                const up = document.createElement("div");
-                up.style.cssText = "display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;cursor:pointer;color:var(--color-info);font-size:13px;";
-                up.innerHTML = '<i class="fas fa-level-up-alt"></i> 返回上级';
-                up.onclick = () => loadParserServerFiles("structures");
-                box.appendChild(up);
-            }
-            dirs.forEach(d => {
-                const row = document.createElement("div");
-                row.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;border-radius:6px;cursor:pointer;transition:background .15s;";
-                row.onmouseenter = () => row.style.background = "var(--bg-hover)";
-                row.onmouseleave = () => row.style.background = "transparent";
-                row.innerHTML = '<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;"><i class="fas fa-folder" style="color:var(--color-warning);margin-right:6px;"></i><span style="font-size:13px;">' + escapeHtml(d.name) + '</span></div>' +
-                    '<i class="fas fa-chevron-right" style="color:var(--text-tertiary);font-size:12px;"></i>';
-                row.onclick = () => loadParserServerFiles(d.path);
-                box.appendChild(row);
-            });
-            list.forEach(f => {
-                const row = document.createElement("div");
-                row.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;border-radius:6px;cursor:pointer;transition:background .15s;";
-                row.onmouseenter = () => row.style.background = "var(--bg-hover)";
-                row.onmouseleave = () => row.style.background = "transparent";
-                const info = document.createElement("div");
-                info.style.cssText = "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;";
-                info.innerHTML = '<i class="fas fa-file-archive" style="color:var(--text-tertiary);margin-right:6px;"></i><span style="font-family:monospace;font-size:13px;">' + escapeHtml(f.name) + '</span>' +
-                    '<span style="margin-left:10px;font-size:12px;color:var(--text-tertiary);">' + fmtSize(f.size) + '</span>';
-                const btn = document.createElement("button");
-                btn.className = "btn btn-secondary btn-sm";
-                btn.style.cssText = "flex:0 0 auto;";
-                btn.innerHTML = '<i class="fas fa-search"></i> 解析';
-                btn.onclick = (e) => {
-                    e.stopPropagation();
-                    parseServerFile(f.path, f.name);
-                };
-                row.appendChild(info);
-                row.appendChild(btn);
-                box.appendChild(row);
-            });
-        } catch (err) {
-            box.innerHTML = '<div style="padding:16px;text-align:center;color:var(--color-danger);font-size:13px;">加载失败: ' + escapeHtml(extractApiMessage(err) || "请检查网络") + '</div>';
-        }
     }
 
     function fmtSize(bytes) {
@@ -1652,33 +1604,6 @@
         if (bytes < 1024) return bytes + " B";
         if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
         return (bytes / 1048576).toFixed(2) + " MB";
-    }
-
-    async function parseServerFile(relPath, filename) {
-        const status = $("parserStatus");
-        if (!status) return;
-        resetParserResult();
-        status.style.display = "block";
-        status.style.background = "var(--bg-hover)";
-        status.style.color = "var(--text-secondary)";
-        status.textContent = "正在解析: " + filename + " ...";
-        const ext = filename.toLowerCase().split(".").pop();
-        try {
-            const data = await api("/api/parser/stats_path", { method: "POST", body: { file_path: "/" + relPath, fmt: ext }, timeout: 120000 });
-            renderParserResult(data, filename);
-            // 记录服务器文件路径供 3D 预览
-            const pvBtn = $("parserPreview3dBtn");
-            if (pvBtn) {
-                pvBtn.setAttribute("data-path", "/" + relPath);
-                pvBtn.setAttribute("data-fmt", ext);
-                pvBtn.style.display = "inline-flex";
-            }
-            status.style.display = "none";
-        } catch (err) {
-            status.style.background = "rgba(239,68,68,.12)";
-            status.style.color = "var(--color-danger)";
-            status.textContent = "解析失败: " + (extractApiMessage(err) || "请检查文件格式");
-        }
     }
 
     async function openParserPreview3D(filePath, fmt) {
@@ -1728,7 +1653,19 @@
         try {
             const data = await api("/api/parser/stats", { method: "POST", body: fd, timeout: 120000 });
             renderParserResult(data, file.name);
-            status.style.display = "none";
+            // 记录文件路径供 3D 预览按钮
+            const pvBtn = $("parserPreview3dBtn");
+            if (pvBtn) {
+                pvBtn.setAttribute("data-path", data.file_path || "");
+                pvBtn.setAttribute("data-fmt", data.fmt || "");
+                pvBtn.style.display = "inline-flex";
+            }
+            // 上传解析成功后自动打开 3D 预览
+            if (data.file_path) {
+                await openParserPreview3D(data.file_path, data.fmt || "");
+            } else if (status) {
+                status.style.display = "none";
+            }
         } catch (err) {
             status.style.background = "rgba(239,68,68,.12)";
             status.style.color = "var(--color-danger)";
