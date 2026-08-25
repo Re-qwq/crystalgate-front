@@ -3298,28 +3298,14 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
                     <div class="card-title"><i class="fas fa-cloud-upload-alt"></i> 上传建筑文件</div>
                 </div>
                 <div class="card-body">
-                    <div id="parserDropZone" style="border:2px dashed var(--border-default);border-radius:var(--radius-md);padding:32px 16px;text-align:center;cursor:pointer;color:var(--text-secondary);transition:border-color .2s;">
-                        <i class="fas fa-file-upload" style="font-size:32px;margin-bottom:8px;display:block;color:var(--text-tertiary);"></i>
-                        <div>点击选择或拖拽文件到此处</div>
-                        <div style="font-size:12px;margin-top:6px;color:var(--text-tertiary);">
-                            支持: mcstructure / schematic / bdx / litematic / mcworld / mcaddon / kbdx / fuhong / gangban / axiombp / bcf / tibi / bds / nexus_np / mianyang / covstructure / runaway / qingxu / timebuilder / nexus / construction / ibimport
-                        </div>
+                    <div id="parserDropZone" class="parser-dropzone">
+                        <div class="parser-dropzone-icon"><i class="fas fa-file-import"></i></div>
+                        <div class="parser-dropzone-title">点击选择或拖拽文件到此处</div>
+                        <div class="parser-dropzone-file" id="parserSelectedFile">未选择文件</div>
+                        <div class="parser-dropzone-hint">支持常见建筑格式文件</div>
                     </div>
                     <input type="file" id="parserFileInput" style="display:none;">
                     <div id="parserStatus" style="display:none;margin-top:12px;padding:10px 14px;border-radius:var(--radius-md);font-size:13px;"></div>
-                </div>
-            </div>
-
-            <!-- 服务器 structures 目录文件 -->
-            <div class="card" style="margin-bottom:20px;">
-                <div class="card-header">
-                    <div class="card-title"><i class="fas fa-folder-open"></i> 服务器 structures 文件</div>
-                    <div class="card-subtitle">选择服务器上的建筑文件直接解析, 无需上传</div>
-                </div>
-                <div class="card-body">
-                    <div id="parserServerFiles" style="max-height:220px;overflow-y:auto;border:1px solid var(--border-default);border-radius:var(--radius-md);padding:6px;">
-                        <div style="padding:20px;text-align:center;color:var(--text-tertiary);font-size:13px;">加载中...</div>
-                    </div>
                 </div>
             </div>
 
