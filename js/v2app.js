@@ -1660,11 +1660,11 @@
                 pvBtn.setAttribute("data-fmt", data.fmt || "");
                 pvBtn.style.display = "inline-flex";
             }
-            // 上传解析成功后自动打开 3D 预览
-            if (data.file_path) {
-                await openParserPreview3D(data.file_path, data.fmt || "");
-            } else if (status) {
-                status.style.display = "none";
+            // 解析成功：停留在结果页，由用户点击"3D 预览"按钮再打开
+            if (status) {
+                status.style.background = "rgba(46,160,67,.12)";
+                status.style.color = "var(--color-success)";
+                status.textContent = "解析完成，可点击下方「3D 预览」查看模型";
             }
         } catch (err) {
             status.style.background = "rgba(239,68,68,.12)";
@@ -2619,7 +2619,47 @@
 
             // 加载面板关联的机器人
             await loadPanelBot();
+            // 加载游戏内导入白名单配置
+            loadImportWhitelist();
         } catch (_) { /* 已处理 */ }
+    }
+
+    /** 加载游戏内导入白名单 (填入设置页输入框) */
+    async function loadImportWhitelist() {
+        const panelId = state.currentPanelId;
+        const input = $("importWhitelistInput");
+        if (!panelId || !input) return;
+        try {
+            const res = await api(`/api/panel/${encodeURIComponent(panelId)}/import-whitelist`);
+            if (res && res.success) {
+                input.value = res.whitelist || "";
+            }
+        } catch (_) { /* 已处理 */ }
+    }
+
+    /** 保存游戏内导入白名单 */
+    async function saveImportWhitelist() {
+        const panelId = state.currentPanelId;
+        const input = $("importWhitelistInput");
+        if (!panelId || !input) return;
+        const text = (input.value || "").trim();
+        const btn = $("btnSaveImportWhitelist");
+        try {
+            if (btn) { btn.disabled = true; }
+            const res = await api(`/api/panel/${encodeURIComponent(panelId)}/import-whitelist`, {
+                method: "PUT",
+                body: { whitelist: text },
+            });
+            if (res && res.success) {
+                toastSuccess("白名单已保存");
+            } else {
+                toastError((res && res.message) || "保存失败");
+            }
+        } catch (e) {
+            toastError("保存失败: " + (e.message || "请求错误"));
+        } finally {
+            if (btn) { btn.disabled = false; }
+        }
     }
 
     /** 加载面板关联的机器人 */
@@ -2657,6 +2697,11 @@
             startBtn.classList.add("hidden");
             stopBtn.classList.remove("hidden");
             restartBtn.classList.remove("hidden");
+        } else if (botStatus === "ready") {
+            // 待机(已启动未进服): 仅显示停止 (可取消待机); 进服走启动菜单
+            startBtn.classList.add("hidden");
+            stopBtn.classList.remove("hidden");
+            restartBtn.classList.add("hidden");
         } else if (botStatus === "error") {
             // 错误状态: 显示启动+停止 (允许停止重连尝试)
             startBtn.classList.remove("hidden");
@@ -2676,6 +2721,10 @@
                 statusDot.style.background = "#22c55e";
                 statusText.textContent = "运行中";
                 statusText.style.color = "#22c55e";
+            } else if (state.panelBot && state.panelBot.status === "ready") {
+                statusDot.style.background = "#a78bfa";
+                statusText.textContent = "面板已启动（待进服）";
+                statusText.style.color = "#a78bfa";
             } else if (state.panelBot && (state.panelBot.status === "starting" || state.panelBot.status === "connecting")) {
                 statusDot.style.background = "#f59e0b";
                 statusText.textContent = "启动中...";
@@ -3056,6 +3105,37 @@
         state.terminalHistory.push(cmdTrim);
         state.terminalHistoryIndex = state.terminalHistory.length;
 
+        // ── 命令优先: /say 聊天、//原版命令 不被菜单拦截 ──
+        if (cmdTrim.startsWith("/")) {
+            const isRunning = state.panelBot && (state.panelBot.status === "running" || state.panelBot.status === "active");
+            if (!state.currentBotId) {
+                appendTerminal("❌ 没有可用的机器人，无法发送命令", "error");
+                return;
+            }
+            if (!isRunning) {
+                appendTerminal(`❌ 机器人未启动, 无法执行 "${cmdTrim}" (请先点击启动)`, "warn");
+                return;
+            }
+            try {
+                const res = await api(`/bots/${state.currentBotId}/command`, {
+                    method: "POST",
+                    body: { command: cmdTrim },
+                });
+                if (res.success) {
+                    if (cmdTrim.startsWith("/say ")) {
+                        appendTerminal("✅ 消息已发送到聊天框", "success");
+                    } else {
+                        appendTerminal("✅ 命令已送达机器人", "success");
+                    }
+                } else {
+                    appendTerminal(`发送失败: ${res.detail || res.message || "未知错误"}`, "error");
+                }
+            } catch (err) {
+                appendTerminal(`发送失败: ${err?.message || "请求错误"}`, "error");
+            }
+            return;
+        }
+
         // ── 菜单模式 (TD 式交互) ──
         if (state.menuMode === "start-menu") {
             state.menuMode = "";
@@ -3127,8 +3207,7 @@
             } else if (cmdTrim === "0") {
                 appendTerminal("已取消", "info");
             } else {
-                appendTerminal("❌ 无此选项: " + cmdTrim + " (输入 1/2/0)", "warn");
-                showStartMenuAfterBoot();
+                appendTerminal("❌ 无此选项: " + cmdTrim + " 已退出", "warn");
             }
             return;
         }
@@ -3311,6 +3390,32 @@
                 }
                 showMainMenu();
                 return;
+            } else if (cmdTrim === "3") {
+                // 人数填充 (进服后可随时使用)
+                if (!isBotInGame()) {
+                    appendTerminal("❌ 机器人尚未进服, 请先启动机器人再使用人数填充", "warn");
+                    return;
+                }
+                const bot = state.panelBot || {};
+                const serverCode = bot.server_code || "";
+                if (!serverCode || serverCode === "待设置" || serverCode.trim() === "") {
+                    toastWarn("请先配置服务器号");
+                    appendTerminal("❌ 未配置服务器号, 请到「设置」中填写服务器号", "error");
+                    return;
+                }
+                state.menuMode = "fill-mode";
+                appendTerminal("══ 人数填充 ══", "system");
+                const fillAcctMode = bot.account_mode || "own";
+                const fillAcctLabel = fillAcctMode === "own" ? "自注册账号 (绑定本面板)" : "数据库账号";
+                appendTerminal(`  当前账号来源: ${fillAcctLabel} (跟随面板设置)`, "info");
+                appendTerminal("  [1] 租赁服填充", "system");
+                appendTerminal("  [2] 按房间号填充", "system");
+                appendTerminal("  [3] 按玩家编号填充", "system");
+                appendTerminal("  [4] 停止填充", "system");
+                appendTerminal("  [5] 查看状态", "system");
+                appendTerminal("  [0] 返回", "system");
+                appendTerminal("  输入编号选择:", "info");
+                return;
             } else if (cmdTrim === "0") {
                 appendTerminal("菜单已关闭", "info");
                 return;
@@ -3318,7 +3423,8 @@
                 showMainMenu();
                 return;
             } else {
-                appendTerminal("❌ 无此选项: " + cmdTrim + " (输入 1/2/0 或 menu)", "warn");
+                appendTerminal("❌ 无此选项: " + cmdTrim + " 已退出", "warn");
+                state.menuMode = "";
                 return;
             }
         }
@@ -3892,6 +3998,7 @@
         appendTerminal("  [2] 皮肤", "system");
         appendTerminal("  [3] 人数填充", "system");
         appendTerminal("  [0] 取消", "system");
+        appendTerminal("────────────", "system");
         appendTerminal("  输入编号选择:", "info");
     }
 
@@ -3924,8 +4031,72 @@
             toastWarn("正在启动中，请稍候...");
             return;
         }
-        // 用户要求: 点启动 → 立即启动进服, 进服成功后才显示菜单
-        await doRealStartBot();
+        // 用户要求: 点启动 → 面板真启动(不自动进服) → 弹启动菜单 → 用户自选是否进服
+        await doPanelStart();
+    }
+
+    /** 启动面板(待机): 后端完成账号分配/前置检查, 不自动进服, 成功后弹启动菜单 */
+    async function doPanelStart() {
+        if (isPanelLocked()) { toastWarn("面板已锁定，无法操作"); return; }
+        if (isBotInGame()) {
+            toastWarn("机器人已在租赁服内，请先停止面板");
+            appendTerminal("❌ 机器人已在租赁服内，请先停止面板", "warn");
+            return;
+        }
+        // 防连点: 启动中忽略重复请求
+        if (state._botOpLock) {
+            toastWarn("正在启动中，请稍候...");
+            return;
+        }
+        const bot = state.panelBot || {};
+        const serverCode = (bot.server_code || "").trim();
+        if (!serverCode || serverCode === "待设置") {
+            toastWarn("请先在「设置」中配置服务器号");
+            appendTerminal("❌ 未配置服务器号, 请到「设置」标签页填写服务器号后再启动", "error");
+            return;
+        }
+        if (!state.currentBotId) {
+            toastWarn("请先创建面板机器人");
+            return;
+        }
+        state._botOpLock = true;
+        const startBtn = $("btnStartBot");
+        try {
+            startBtn.disabled = true;
+            appendTerminal("正在启动面板...", "system");
+            // 先更新本地状态和按钮 (不等后端轮询)
+            if (state.panelBot) state.panelBot.status = "connecting";
+            updatePanelBotUI();
+            const res = await api(`/bots/${state.currentBotId}/start`, {
+                method: "POST",
+                body: { like: false, skin_name: "", welcome: false },
+            });
+            if (res.success) {
+                appendTerminal("✅ 面板已启动 (尚未进服)", "success");
+                toastSuccess("面板已启动");
+                if (state.panelBot) state.panelBot.status = "ready";
+                $("btnStartBot").classList.add("hidden");
+                $("btnStopBot").classList.remove("hidden");
+                $("btnRestartBot").classList.remove("hidden");
+                await loadPanelBot();
+                showStartMenuAfterBoot();
+            } else {
+                const errMsg = res.detail || res.message || "启动失败 (未知原因)";
+                appendTerminal(`❌ 启动失败: ${errMsg}`, "error");
+                toastError(errMsg);
+                if (state.panelBot) state.panelBot.status = "error";
+                updatePanelBotUI();
+            }
+        } catch (err) {
+            const errMsg = err?.message || err?.detail || "启动请求失败";
+            appendTerminal(`❌ 启动失败: ${errMsg}`, "error");
+            toastError(errMsg);
+            if (state.panelBot) state.panelBot.status = "error";
+            updatePanelBotUI();
+        } finally {
+            startBtn.disabled = false;
+            state._botOpLock = false;
+        }
     }
 
     async function doRealStartBot(like = false) {
@@ -3961,9 +4132,9 @@
             // 先更新本地状态和按钮 (不等后端轮询)
             if (state.panelBot) state.panelBot.status = "connecting";
             updatePanelBotUI();
-            const res = await api(`/bots/${state.currentBotId}/start`, {
+            const res = await api(`/bots/${state.currentBotId}/enter`, {
                 method: "POST",
-                body: { like: !!like, skin_name: "", welcome: false },
+                body: { like: !!like, skin_name: "", welcome: true },
             });
             if (res.success) {
                 appendTerminal("⏳ 正在进入租赁服...", "info");
@@ -4026,6 +4197,7 @@
         appendTerminal("── 菜单 ──", "system");
         appendTerminal("  [1] 皮肤", "system");
         appendTerminal("  [2] 状态", "system");
+        appendTerminal("  [3] 人数填充", "system");
         appendTerminal("  [0] 关闭", "system");
         appendTerminal("────────────", "system");
     }
@@ -6531,6 +6703,18 @@
             $("botConfigForm").addEventListener("change", autosave);
         }
 
+        // ---- 游戏内导入白名单 ----
+        if ($("btnSaveImportWhitelist")) $("btnSaveImportWhitelist").addEventListener("click", saveImportWhitelist);
+        if ($("importWhitelistInput")) {
+            // 输入停止 1.2s 后自动保存 (无需手动点按钮)
+            $("importWhitelistInput").addEventListener("input", () => {
+                clearTimeout(window.__wlAutosaveTimer);
+                window.__wlAutosaveTimer = setTimeout(() => {
+                    saveImportWhitelist();
+                }, 1200);
+            });
+        }
+
         // ---- 接入点下载 ----
         if ($("btnDownloadNeomega")) $("btnDownloadNeomega").addEventListener("click", () => downloadAccessPoint("neomega"));
         if ($("btnDownloadFateark")) $("btnDownloadFateark").addEventListener("click", () => downloadAccessPoint("fateark"));
@@ -8521,8 +8705,10 @@
             ind.classList.toggle("done", i < n);
             ind.classList.toggle("active", i === n);
         }
-        $("bcLine1").classList.toggle("done", n > 1);
-        $("bcLine2").classList.toggle("done", n > 2);
+        const l1 = $("bcLine1");
+        if (l1) l1.classList.toggle("done", n > 1);
+        const l2 = $("bcLine2");
+        if (l2) l2.classList.toggle("done", n > 2);
     }
     window.cancelBotRegister = async function(auto = false) {
         if (_bcTimer) { clearInterval(_bcTimer); _bcTimer = null; }
