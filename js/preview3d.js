@@ -33,6 +33,7 @@
     var loadSeq = 0, built = false;
     var entityByPos = {};
     var chunkLines = null;      // 区块边界线组
+    var glassBase = null;       // 玻璃底座 {ims, line}
 
     var geoCache = {};          // shape+key -> BufferGeometry
     var matCache = {};          // base+faces+transparent -> MeshLambertMaterial[]
@@ -71,6 +72,10 @@
         if (states.top_slot_bit != null && states.type == null) {
             states.type = (states.top_slot_bit === "true" || states.top_slot_bit === true) ? "top" : "bottom";
         }
+        // Java 风格: vertical_half -> 半砖 type (1.8~1.12 数据)
+        if (states.vertical_half != null && states.type == null && states.half == null) {
+            states.type = String(states.vertical_half);
+        }
         // 柱体: pillar_axis -> axis
         if (states.pillar_axis != null && states.axis == null) {
             states.axis = String(states.pillar_axis);
@@ -100,13 +105,35 @@
     }
 
     /* ================= 元数据查询 ================= */
+    // 旧版/解析器遗留方块名 -> 纹理表真实条目 (避免贴图缺失变石头/纯色)
+    var TEX_ALIAS = {
+        "minecraft:smooth_stone": "minecraft:stone",
+        "minecraft:double_stone_block_slab": "minecraft:stone",
+        "minecraft:stone_brick_stairs": "minecraft:stone_stairs",
+        "minecraft:waterlily": "minecraft:lily_pad",
+        "minecraft:flowing_water": "minecraft:water",
+        "minecraft:light_block": "minecraft:light",
+        "minecraft:concrete": "minecraft:white_concrete",
+        "minecraft:stained_hardened_clay": "minecraft:terracotta",
+        "minecraft:wall_sign": "minecraft:oak_planks",
+        "minecraft:standing_sign": "minecraft:oak_planks",
+        "minecraft:quartz_stairs": "minecraft:quartz_block",
+        "minecraft:grass": "minecraft:grass_block",
+        "minecraft:stone_slab": "minecraft:stone",
+        "minecraft:stonebrick": "minecraft:stone_bricks",
+        "minecraft:log": "minecraft:oak_log",
+        "minecraft:planks": "minecraft:oak_planks",
+        "minecraft:wool": "minecraft:white_wool",
+        "minecraft:invisiblebedrock": "minecraft:barrier",
+    };
     function metaOf(parsed) {
         if (!blockMeta) return null;
         var b = parsed.base;
-        var hit = blockMeta["minecraft:" + b] || blockMeta[b] || blockMeta["minecraft:" + b.split("[")[0]];
-        // light_block 是新版方块名, 元数据以旧名 light 收录, 补一个兜底
-        if (!hit && b === "light_block" && blockMeta["minecraft:light"]) {
-            hit = blockMeta["minecraft:light"];
+        var full = "minecraft:" + b;
+        var hit = blockMeta[full] || blockMeta[b];
+        if (!hit && TEX_ALIAS[full]) {
+            var alt = TEX_ALIAS[full];
+            hit = blockMeta[alt] || blockMeta[alt.replace(/^minecraft:/, "")];
         }
         return hit || null;
     }
@@ -573,11 +600,27 @@
     }
 
     /* ================= 构建场景 ================= */
+    // base64 Int32Array 解码 (后端二进制 blocks, 省传输/解析内存)
+    function decodeBlocksB64(b64) {
+        try {
+            var bin = atob(b64);
+            var u8 = new Uint8Array(bin.length);
+            for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+            return new Int32Array(u8.buffer);
+        } catch (e) {
+            return null;
+        }
+    }
     function build(data, root) {
         var size = data.size;
         var w = size.width, h = size.height, l = size.length;
         var names = Object.keys(data.name_ids);
         var blocks = data.blocks;
+        if (typeof blocks === "string") {
+            var ta = decodeBlocksB64(blocks);
+            if (!ta) { console.error("[preview3d] blocks 解码失败"); return; }
+            blocks = ta;
+        }
         var n = blocks.length / 4;
 
         // 收集: 每个方块 -> {parsed, x, y, z}
@@ -791,9 +834,15 @@
         makeCheck("cg-pv3d-barrier", "屏障方块", function (e) {
             if (specialGroups.barrier) specialGroups.barrier.visible = e.target.checked;
         });
+        makeCheck("cg-pv3d-glass", "玻璃底座", function (e) {
+            if (glassBase) {
+                glassBase.ims.forEach(function (im) { im.visible = e.target.checked; });
+                glassBase.line.visible = e.target.checked;
+            }
+        }, false);
         makeCheck("cg-pv3d-chunk", "区块边界 (16×16)", function (e) {
             if (chunkLines) chunkLines.visible = e.target.checked;
-        }, true);
+        }, false);
 
         var sep = document.createElement("span");
         sep.style.cssText = "opacity:0.3;";
@@ -823,13 +872,14 @@
         var statWrap = document.createElement("div");
         statWrap.style.cssText = "margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap;";
         var chunks = Math.max(1, Math.ceil(data.size.width / 16)) * Math.max(1, Math.ceil(data.size.length / 16));
-        var nbtCnt = (data.entities && data.entities.length) || 0;
+        // NBT 统计口径：与命令方块分离——命令方块单独计数，NBT 只统计非命令方块实体（箱子/木桶/花盆等容器）
         var cmdCnt = (data.command_block_count != null) ? data.command_block_count : ((data.entities || []).filter(function (e) { return /command_block/.test(e.name || ""); }).length);
+        var nbtCnt = (data.nbt_count != null) ? data.nbt_count : ((data.entities || []).filter(function (e) { return !e.is_cmd && e.nbt && !/command_block/.test(e.name || ""); }).length);
         var statDefs = [
             ["方块", (total || 0).toLocaleString()],
             ["区块", chunks],
-            ["NBT", nbtCnt],
-            ["命令", cmdCnt],
+            ["命令方块", cmdCnt],
+            ["NBT实体", nbtCnt],
             ["尺寸", data.size.width + "×" + data.size.height + "×" + data.size.length]
         ];
         statDefs.forEach(function (s) {
@@ -956,8 +1006,8 @@
                 done();
             });
         }
-        // 兜底超时: 资源加载异常时最多等 20s, 防止 3D 预览一直转圈
-        setTimeout(fire, 20000);
+        // 兜底超时: 资源加载异常时最多等 8s, 防止 3D 预览一直转圈(用户反馈卡在加载贴图)
+        setTimeout(fire, 8000);
     }
 
     function initScene(host, data) {
@@ -997,6 +1047,7 @@
         scene.add(fill);
 
         // 底部玻璃底座：半透明灰色玻璃"方块"铺满整面（方块状，建筑坐在其上）
+        // 注意：默认关闭（用户反馈白色半透明凹槽覆盖建筑下方），通过 UI 开关启用
         var gw = size.width, gl = size.length;
         var gstep = (gw * gl > 250000) ? 2 : 1;   // 超大底座用 2×2 玻璃块合并, 避免实例过多
         var glassItems = [];
@@ -1014,15 +1065,17 @@
             depthWrite: false
         });
         var glassIMS = makeInstanced(glassGeo, glassMat, glassItems, gw / 2, gl / 2, 0.5);
-        glassIMS.forEach(function (im) { scene.add(im); });
+        glassIMS.forEach(function (im) { scene.add(im); im.visible = false; });
         // 玻璃底座外框描边（贴顶面）
         var glassEdge = new THREE.EdgesGeometry(new THREE.BoxGeometry(gw, 1, gl));
         glassEdge.translate(0, 0.5, 0);
         var glassLine = new THREE.LineSegments(glassEdge, new THREE.LineBasicMaterial({ color: 0x6c8cff, transparent: true, opacity: 0.45 }));
         glassLine.position.set(0, 0, 0);
+        glassLine.visible = false;
         scene.add(glassLine);
+        glassBase = { ims: glassIMS, line: glassLine };
 
-        // 区块边界线（16×16）：直接覆盖整个玻璃面顶面，不管上面有无建筑，默认显示
+        // 区块边界线（16×16）：直接覆盖整个玻璃面顶面，默认关闭（用户反馈干扰观感）
         chunkLines = new THREE.Group();
         var lineMat = new THREE.LineBasicMaterial({ color: 0x6c8cff, transparent: true, opacity: 0.30 });
         var lineMatStrong = new THREE.LineBasicMaterial({ color: 0x9ab0ff, transparent: true, opacity: 0.6 });
@@ -1036,6 +1089,7 @@
             var geo2 = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-maxX / 2, ly, cz - maxZ / 2), new THREE.Vector3(maxX / 2, ly, cz - maxZ / 2)]);
             chunkLines.add(new THREE.Line(geo2, cz % 16 === 0 ? lineMatStrong : lineMat));
         }
+        chunkLines.visible = false;
         scene.add(chunkLines);
 
         // 网格辅助（淡化，做玻璃底座下的弱参考）
@@ -1257,10 +1311,18 @@
     }
 
     function openEntityUI(ent, data) {
-        if (!ent || !ent.nbt) return;
+        if (!ent) return;
         var nbt = ent.nbt;
         var name = ent.name || "";
+        var isCmdByName = /command_block/i.test(name);
         var title = zh(BLOCK_ZH, name, name.replace(/^minecraft:/, ""));
+        // 命令方块可能无 NBT（部分格式仅存方块名），补默认结构保证可点击查看
+        if (!nbt && isCmdByName) {
+            nbt = { id: name, Command: "" };
+            buildCommand(title, nbt);
+            return;
+        }
+        if (!nbt) return;
         var id = nbt.id || "";
         // 命令方块: 优先按 NBT id 判断, 兜底按方块名判断(部分格式命令方块 NBT 无 id 字段)
         var isCmdByName = /command_block/i.test(name);
@@ -1462,8 +1524,36 @@
         renderer.render(scene, camera);
     }
 
+    function disposeSceneGpu() {
+        // 释放场景内 geometry/material 的 GPU 资源; 共享图集纹理(atlasTex/itemAtlasTex)保留供复用
+        try {
+            if (scene) {
+                scene.traverse(function (o) {
+                    if (o.geometry) o.geometry.dispose();
+                    if (o.material) {
+                        var mats = Array.isArray(o.material) ? o.material : [o.material];
+                        mats.forEach(function (m) {
+                            if (!m) return;
+                            if (m.map && m.map !== atlasTex && m.map !== itemAtlasTex) m.map.dispose();
+                            m.dispose();
+                        });
+                    }
+                });
+            }
+            if (geoCache) {
+                Object.keys(geoCache).forEach(function (k) {
+                    try { geoCache[k].dispose(); } catch (e) {}
+                });
+                geoCache = {};
+            }
+        } catch (e) {
+            console.warn("[preview3d] disposeSceneGpu:", e);
+        }
+    }
+
     function close() {
         loadSeq++;
+        disposeSceneGpu();
         if (container) {
             if (container._escHandler) document.removeEventListener("keydown", container._escHandler);
             if (container.parentNode) container.parentNode.removeChild(container);
@@ -1481,6 +1571,9 @@
         specialGroups = { barrier: null, void: null, light: null };
         entityByPos = {};
         chunkLines = null;
+        glassBase = null;
+        // 清空材质缓存，避免反复开关预览内存累积
+        matCache = {};
     }
 
     // spinner 动画（loading 用）
