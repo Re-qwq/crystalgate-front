@@ -854,7 +854,7 @@
     }
 
     function showQuickHelp() {
-        toastInfo('CrystalGate v1.9.0 - Minecraft Bedrock 机器人管理平台');
+        toastInfo('CrystalGate v2.2.1 - Minecraft Bedrock 机器人管理平台');
     }
 
     /** 4399 账号管理弹窗: 提取 sauth_json / 注册新账号 */
@@ -3007,7 +3007,8 @@
                             appendTerminal("   /say 文字 → 机器人说话", "info");
                             appendTerminal("   //命令 → 执行原版命令", "info");
                             // 进服成功后才显示操作菜单
-                            showStartMenuAfterBoot();
+                            // 注: 进服后不再自动弹出启动菜单 (皮肤/填充仅限未进服时可配置, 避免玩家误操作)
+                            appendTerminal("   输入「menu」打开功能菜单 (需停止面板才能换肤/填充)", "info");
                         } else if (displayStatus === "connecting" || displayStatus === "starting") {
                             appendTerminal("⏳ 正在连接...", "info");
                         }
@@ -3164,9 +3165,9 @@
                 }
                 return;
             } else if (cmdTrim === "2") {
-                // 未进服时锁定皮肤功能
-                if (!isBotInGame()) {
-                    appendTerminal("❌ 机器人尚未进服, 请先启动机器人", "warn");
+                // 皮肤功能仅限未进服时配置 (进服后锁定, 需先停止面板)
+                if (isBotInGame()) {
+                    appendTerminal("❌ 机器人已在租赁服内，换肤请先停止面板", "warn");
                     showStartMenuAfterBoot();
                     return;
                 }
@@ -3176,9 +3177,9 @@
                 appendTerminal("  [2] 搜索玩家皮肤", "system");
                 appendTerminal("  [3] 返回", "system");
             } else if (cmdTrim === "3") {
-                // 未进服时锁定人数填充
-                if (!isBotInGame()) {
-                    appendTerminal("❌ 机器人尚未进服, 请先启动机器人再使用人数填充", "warn");
+                // 人数填充仅限未进服时配置 (进服后锁定, 需先停止面板)
+                if (isBotInGame()) {
+                    appendTerminal("❌ 机器人已在租赁服内，填充请先停止面板", "warn");
                     showStartMenuAfterBoot();
                     return;
                 }
@@ -3391,9 +3392,9 @@
                 showMainMenu();
                 return;
             } else if (cmdTrim === "3") {
-                // 人数填充 (进服后可随时使用)
-                if (!isBotInGame()) {
-                    appendTerminal("❌ 机器人尚未进服, 请先启动机器人再使用人数填充", "warn");
+                // 人数填充仅限未进服时配置 (进服后锁定, 需先停止面板)
+                if (isBotInGame()) {
+                    appendTerminal("❌ 机器人已在租赁服内，填充请先停止面板", "warn");
                     return;
                 }
                 const bot = state.panelBot || {};
