@@ -8879,6 +8879,52 @@
         }
     };
 
+    // ─── 头像长按保存 (3秒) ───
+    window.saveAvatarToAlbum = async function(url, name) {
+        try {
+            const resp = await fetch(apiUrl("/player/avatar-proxy?url=" + encodeURIComponent(url)), {
+                headers: { "Authorization": state.token ? "Bearer " + state.token : "" }
+            });
+            if (!resp.ok) throw new Error("fetch failed " + resp.status);
+            const blob = await resp.blob();
+            const objUrl = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = objUrl;
+            a.download = "avatar_" + (name || "player").replace(/[^\w\u4e00-\u9fa5]/g, "_") + ".png";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(objUrl), 8000);
+            toastOk("头像已保存");
+        } catch (e) {
+            toastErr("头像保存失败: " + (e.message || e));
+        }
+    };
+
+    window.bindAvatarSave = function(imgEl, url, name) {
+        if (!imgEl || !url) return;
+        let timer = null;
+        const start = (ev) => {
+            if (ev) ev.preventDefault();
+            if (timer) return;
+            timer = setTimeout(() => {
+                timer = null;
+                if (confirm(`是否将 ${name || "该玩家"} 的头像保存到相册?`)) {
+                    window.saveAvatarToAlbum(url, name);
+                }
+            }, 3000);
+        };
+        const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
+        imgEl.addEventListener("touchstart", start, { passive: false });
+        imgEl.addEventListener("touchend", cancel);
+        imgEl.addEventListener("touchmove", cancel);
+        imgEl.addEventListener("mousedown", start);
+        imgEl.addEventListener("mouseup", cancel);
+        imgEl.addEventListener("mouseleave", cancel);
+        imgEl.style.cursor = "pointer";
+        imgEl.title = "长按3秒保存头像";
+    };
+
     window.queryIpPort = async function() {
         const typeEl = $("ipQueryType");
         const inputEl = $("ipQueryInput");
@@ -8905,69 +8951,75 @@
         const type = typeEl.value;
         const input = inputEl.value.trim();
         if (!input) { toastWarn(type === "player" ? "请输入玩家UID或昵称" : "请输入服务器号或房间号"); return; }
-        // 玩家查询走独立端点
+        // 玩家查询走独立端点: 数字输入同时返回 UID 匹配 + 昵称匹配
         if (type === "player") {
             const res = await api("/player/query", { method: "POST", body: { player_id: input } });
             if (bodyEl) {
                 if (res.success && res.data) {
-                    const p = res.data;
-                    let html = `<div style="display:flex;gap:12px;align-items:center;margin-bottom:10px;">
-                        ${p.avatar ? `<img src="${escapeHtml(p.avatar)}" style="width:48px;height:48px;border-radius:8px;" onerror="this.style.display='none'">` : ''}
-                        <div>
+                    const d = res.data;
+                    const uidMatch = d.uid_match || null;
+                    const nameMatches = Array.isArray(d.name_matches) ? d.name_matches : [];
+                    // 兼容旧结构: 若无分区字段, 视为单结果
+                    const legacy = (!uidMatch && !nameMatches.length && d.player_id) ? [d] : [];
+                    const cards = [];
+                    if (uidMatch) cards.push({ p: uidMatch, tag: '<i class="fas fa-id-card"></i> UID 精确匹配', primary: true });
+                    (nameMatches.length ? nameMatches : legacy).forEach((m, idx) => {
+                        cards.push({ p: m, tag: `<i class="fas fa-user-tag"></i> 昵称匹配 #${idx + 1}`, primary: false });
+                    });
+                    let html = "";
+                    cards.forEach(({ p, tag }) => {
+                        if (!p) return;
+                        html += `<div style="border:1px solid #30363d;border-radius:10px;padding:12px;margin-bottom:12px;background:#161b22;">`;
+                        html += `<div style="font-size:11px;color:#8b949e;margin-bottom:8px;">${tag}</div>`;
+                        html += `<div style="display:flex;gap:12px;align-items:center;margin-bottom:10px;">`;
+                        if (p.avatar) html += `<img src="${escapeHtml(p.avatar)}" data-avatar-url="${escapeHtml(p.avatar)}" data-avatar-name="${escapeHtml(p.name || "player")}" style="width:56px;height:56px;border-radius:10px;object-fit:cover;user-select:none;-webkit-user-drag:none;" onerror="this.style.display='none'">`;
+                        html += `<div>
                             <div style="font-weight:700;font-size:16px;">${escapeHtml(p.name || "未知玩家")}</div>
                             ${p.level != null ? `<div style="font-size:12px;color:#d29922;">Lv.${p.level} ${p.exp != null ? `(${p.exp}/${p.need_exp || "?"})` : ""}${p.is_vip ? " 👑VIP" : ""}</div>` : ""}
-                        </div>
-                    </div>`;
-                    html += `<div class="ipq-row"><span class="ipq-label">玩家UID</span><span class="mono">${escapeHtml(String(p.player_id || ""))}</span></div>`;
-                    if (p.gender !== undefined && p.gender !== "") html += `<div class="ipq-row"><span class="ipq-label">性别</span><span>${p.gender === "0" ? "男" : (p.gender === "1" ? "女" : "未设置")}</span></div>`;
-                    if (p.online_status) html += `<div class="ipq-row"><span class="ipq-label">在线状态</span><span>${escapeHtml(String(p.online_status))}</span></div>`;
-                    if (p.register_time) html += `<div class="ipq-row"><span class="ipq-label">注册时间</span><span>${escapeHtml(formatTime(p.register_time))}</span></div>`;
-                    if (p.login_time) html += `<div class="ipq-row"><span class="ipq-label">最近登录</span><span>${escapeHtml(formatTime(p.login_time))}</span></div>`;
-                    if (p.signature) html += `<div class="ipq-row"><span class="ipq-label">签名</span><span>${escapeHtml(p.signature)}</span></div>`;
-
-
-                    if (p.stats && Object.keys(p.stats).length) {
-                        let statsHtml = "";
-                        for (const [k, v] of Object.entries(p.stats)) {
-                            if (v !== "" && v != null) statsHtml += `<span style="background:#0d1117;padding:4px 10px;border-radius:6px;font-size:12px;color:#e6edf3;">${escapeHtml(k)}: <b>${escapeHtml(String(v))}</b></span>`;
+                        </div></div>`;
+                        const r = (label, val) => val !== undefined && val !== "" && val !== null && val !== 0 ? `<div class="ipq-row"><span class="ipq-label">${label}</span><span>${val}</span></div>` : "";
+                        html += r("玩家UID", `<span class="mono">${escapeHtml(String(p.player_id || ""))}</span>`);
+                        if (p.gender !== undefined && p.gender !== "") html += r("性别", p.gender === "0" ? "男" : (p.gender === "1" ? "女" : "未设置"));
+                        if (p.online_status) html += r("在线状态", escapeHtml(String(p.online_status)));
+                        if (p.online_type) html += r("在线类型", escapeHtml(String(p.online_type)));
+                        if (p.register_time) html += r("注册时间", escapeHtml(formatTime(p.register_time)));
+                        if (p.login_time) html += r("最近登录", escapeHtml(formatTime(p.login_time)));
+                        if (p.logout_time) html += r("最后下线", escapeHtml(formatTime(p.logout_time)));
+                        if (p.frame) html += r("头像框", escapeHtml(String(p.frame)));
+                        if (p.signature) html += r("签名", escapeHtml(p.signature));
+                        if (p.tags && p.tags.length) html += r("标签", p.tags.map(t => `<span style="background:#0d1117;padding:2px 8px;border-radius:4px;font-size:11px;color:#d2a8ff;margin-right:4px;">${escapeHtml(t)}</span>`).join(""));
+                        if (p.recharge_vip_level != null && p.recharge_vip_level > 0) html += r("充值等级", escapeHtml(String(p.recharge_vip_level)));
+                        if (p.city_no) html += r("城市", escapeHtml(String(p.city_no)));
+                        if (p.is_developer) html += r("开发者", '<span style="color:#3fb950;">是</span>');
+                        if (p.stats && Object.keys(p.stats).length) {
+                            let statsHtml = "";
+                            for (const [k, v] of Object.entries(p.stats)) {
+                                if (v !== "" && v != null) statsHtml += `<span style="background:#0d1117;padding:4px 10px;border-radius:6px;font-size:12px;color:#e6edf3;">${escapeHtml(k)}: <b>${escapeHtml(String(v))}</b></span>`;
+                            }
+                            if (statsHtml) html += `<div class="ipq-row"><span class="ipq-label">数据</span><span style="display:flex;gap:6px;flex-wrap:wrap;">${statsHtml}</span></div>`;
                         }
-                        if (statsHtml) html += `<div class="ipq-row"><span class="ipq-label">数据</span><span style="display:flex;gap:6px;flex-wrap:wrap;">${statsHtml}</span></div>`;
-                    }
-                    if (p.friend_count != null) html += `<div class="ipq-row"><span class="ipq-label">好友数</span><span>${escapeHtml(String(p.friend_count))}</span></div>`;
-                    // 黑名单状态 (若命中黑名单显示红色横幅)
-                    if (p.blacklisted && Array.isArray(p.blacklist) && p.blacklist.length) {
-                        const b0 = p.blacklist[0];
-                        const blInfo = b0.reason ? ` 原因: ${escapeHtml(b0.reason)}` : "";
-                        html += `<div class="ipq-row" style="background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.4);border-radius:6px;padding:6px 10px;"><span class="ipq-label" style="color:#f85149;"><i class="fas fa-ban"></i> 黑名单</span><span style="color:#f85149;">已拉黑${blInfo} (${p.blacklist.length}条)</span></div>`;
-                    }
-                    // 历史进服记录按钮 (折叠展示)
-                    const hist = Array.isArray(p.history) ? p.history : [];
-                    html += `<div style="margin-top:10px;">
-                        <button class="btn btn-secondary btn-sm" style="width:100%;" onclick="togglePlayerFold('${escapeHtml(String(p.player_id || ""))}')"><i class="fas fa-history"></i> 进服历史 (${hist.length})</button>
-                        <div id="fold-${escapeHtml(String(p.player_id || ""))}" style="display:none;margin-top:8px;background:#0d1117;border-radius:6px;padding:8px;max-height:220px;overflow-y:auto;font-size:12px;"></div>
-                    </div>`;
-                    html += `<div style="display:flex;gap:8px;margin-top:10px;">
-                        <button class="btn btn-secondary btn-sm" data-copy="${escapeHtml(String(p.player_id || ""))}" style="flex:1;"><i class="fas fa-copy"></i> 复制UID</button>
-                        <button class="btn btn-secondary btn-sm" data-copy="${escapeHtml(p.name || "")}" style="flex:1;"><i class="fas fa-copy"></i> 复制昵称</button>
-                    </div>`;
+                        if (p.friend_count != null) html += r("好友数", escapeHtml(String(p.friend_count)));
+                        if (p.today_liked != null) html += r("今日获赞", escapeHtml(String(p.today_liked)));
+                        html += `<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+                            <button class="btn btn-secondary btn-sm" data-copy="${escapeHtml(String(p.player_id || ""))}" style="flex:1;min-width:80px;"><i class="fas fa-copy"></i> 复制UID</button>
+                            <button class="btn btn-secondary btn-sm" data-copy="${escapeHtml(p.name || "")}" style="flex:1;min-width:80px;"><i class="fas fa-copy"></i> 复制昵称</button>
+                            ${p.avatar ? `<button class="btn btn-secondary btn-sm" data-avatar="${escapeHtml(p.avatar)}" data-avatar-name="${escapeHtml(p.name || "player")}" style="flex:1;min-width:80px;"><i class="fas fa-download"></i> 保存头像</button>` : ""}
+                        </div></div>`;
+                    });
+                    if (!html) html = `<div class="ipq-empty" style="color:var(--color-warning);"><i class="fas fa-user-slash"></i> 未找到匹配玩家</div>`;
                     bodyEl.innerHTML = html;
-                    // 预填充进服历史折叠内容
-                    const foldEl = bodyEl.querySelector(`#fold-${CSS.escape(String(p.player_id || ""))}`);
-                    if (foldEl) {
-                        if (hist.length) {
-                            foldEl.innerHTML = hist.map(h => {
-                                const t = h.created_at ? formatTime(h.created_at) : "—";
-                                const act = h.action === "leave" ? '<span style="color:#f85149;">离开</span>' : '<span style="color:#3fb950;">进入</span>';
-                                const srv = h.server_name || h.server_code || "—";
-                                const pidTxt = h.player_name || h.player_id || "";
-                                return `<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid #21262d;">${act} <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(srv)}</span><span class="mono" style="font-size:11px;color:#8b949e;">${escapeHtml(pidTxt)} ${escapeHtml(t)}</span></div>`;
-                            }).join("");
-                        } else {
-                            foldEl.innerHTML = `<div style="color:#8b949e;text-align:center;padding:6px;">暂无历史进服记录</div>`;
-                        }
-                    }
                     bodyEl.querySelectorAll("[data-copy]").forEach((el) => {
                         el.addEventListener("click", () => copyToClipboard(el.dataset.copy));
+                    });
+                    bodyEl.querySelectorAll("[data-avatar]").forEach((el) => {
+                        el.addEventListener("click", () => {
+                            if (confirm(`是否将 ${el.dataset.avatarName || "该玩家"} 的头像保存到相册?`)) {
+                                window.saveAvatarToAlbum(el.dataset.avatar, el.dataset.avatarName);
+                            }
+                        });
+                    });
+                    bodyEl.querySelectorAll("img[data-avatar-url]").forEach((img) => {
+                        window.bindAvatarSave(img, img.dataset.avatarUrl, img.dataset.avatarName);
                     });
                 } else {
                     bodyEl.innerHTML = `<div class="ipq-empty" style="color:var(--color-warning);"><i class="fas fa-user-slash"></i> ${escapeHtml(res.message || "未找到该玩家")}</div>`;
