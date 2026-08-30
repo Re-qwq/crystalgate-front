@@ -471,7 +471,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
     color: var(--text-secondary);
 }
 .btn-ghost:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-primary); }
-.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-sm { padding: 4px 8px; font-size: 11.5px; }
 .btn-lg { padding: 12px 24px; font-size: 14px; }
 .btn-block { width: 100%; }
 .btn-icon { padding: 8px; width: 34px; height: 34px; }
@@ -699,8 +699,8 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
 }
 .view {
     display: none;
-    padding: 24px;
-    padding-bottom: 120px;
+    padding: 14px 16px;
+    padding-bottom: 36px;
     animation: viewFadeIn 0.3s ease;
 }
 .view.active { display: block; }
@@ -1045,17 +1045,28 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
     font-family: var(--font-mono);
     font-size: 14px;
     font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+.terminal-prompt-icon {
+    color: var(--color-success);
+    display: block;
 }
 .terminal-input {
     flex: 1;
-    background: transparent;
-    border: none;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
     outline: none;
     font-family: var(--font-mono);
     font-size: 13px;
     color: var(--text-primary);
+    padding: 8px 12px;
 }
 .terminal-input::placeholder { color: var(--text-tertiary); }
+.terminal-input:focus { border-color: var(--color-primary); }
 .terminal-toolbar {
     display: flex;
     align-items: center;
@@ -1070,6 +1081,110 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
     font-size: 11px;
     color: var(--text-tertiary);
     font-family: var(--font-mono);
+}
+.toolbar-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    font-family: var(--font-mono);
+    margin-right: 4px;
+}
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-tertiary);
+    opacity: 0.6;
+    display: inline-block;
+}
+.status-dot.status-on {
+    background: var(--color-success);
+    opacity: 1;
+    box-shadow: 0 0 6px var(--color-success);
+}
+.real-terminal {
+    flex: 1 1 auto;
+    min-height: 120px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 12px;
+    background: #0b0f14;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    border-bottom: 1px solid var(--border-default);
+}
+.real-terminal .terminal-line { color: #d7e0ea; white-space: pre-wrap; }
+.real-terminal .terminal-line.system { color: var(--color-primary); opacity: 0.9; }
+.real-terminal .terminal-line.error { color: #ff6b6b; }
+.real-terminal .ts { color: var(--color-primary); opacity: 0.7; }
+
+/* ---- 容器文件管理 ---- */
+.fs-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+    padding: 4px 8px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    white-space: nowrap;
+}
+.fs-crumb {
+    color: var(--text-secondary);
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: color .15s, background .15s;
+}
+.fs-crumb:hover { color: var(--color-primary); background: var(--bg-hover); }
+.fs-crumb-root { font-weight: 600; }
+.fs-sep { color: var(--text-tertiary); opacity: 0.6; }
+.quota-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--text-tertiary);
+    background: var(--bg-input);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+}
+.fs-search-row { margin-bottom: 10px; }
+.btn-xs {
+    padding: 3px 6px;
+    font-size: 11px;
+    line-height: 1;
+    border-radius: 5px;
+}
+.btn-ghost {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-tertiary);
+}
+.btn-ghost:hover { color: var(--text-primary); background: var(--bg-hover); }
+#fileGrid .card {
+    transition: border-color .15s, background .15s;
+}
+#fileGrid .card:hover {
+    border-color: var(--color-primary);
+    background: var(--bg-elevated);
+}
+#fileGrid .fs-op-btn {
+    color: var(--text-tertiary);
+}
+#fileGrid .fs-op-btn:hover {
+    color: var(--color-primary);
+    background: var(--bg-hover);
 }
 .quick-cmd-item:hover { background: var(--bg-hover); }
 
@@ -1644,8 +1759,8 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
     .topbar-brand .brand-name { display: none; }
     .stats-grid { grid-template-columns: 1fr 1fr; }
     .panels-grid { grid-template-columns: 1fr; }
-    .console-box { height: calc(100vh - var(--topbar-height) - 240px); }
-    .view { padding: 16px; padding-bottom: 120px; }
+    .console-box { height: calc(100vh - var(--topbar-height) - 96px); }
+    .view { padding: 14px 16px; padding-bottom: 36px; }
     .topbar-user .user-info { display: none; }
     .modal { max-width: 100%; }
 }
@@ -1801,7 +1916,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
 <span class="boot-gradient-1"><span class="boot-char">  / __|_ __| |__  _ _ __| |/ __|__ _| |_ ___</span></span>
 <span class="boot-gradient-2"><span class="boot-char"> | (__| '__| '_ \| '_/ _| | (_ / _` |  _/ -_)</span></span>
 <span class="boot-gradient-1"><span class="boot-char">  \___|_|  |_.__/|_| \__|_|\___\__,_|\__\___|</span></span></pre>
-        <div class="boot-version">Version <span id="bootVersion">v2.2.1</span></div>
+        <div class="boot-version">Version <span id="bootVersion">v2.3.0</span></div>
     <script>
     // 兜底: v2app.js 加载失败或初始化超时 (12秒) 才强制切登录页
     // 修复: 原 2.5s 固定兜底在隧道延迟高时 (v2app.js 加载慢/checkSession 慢)
@@ -2247,14 +2362,14 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
                     <div class="console-tab active" data-console-tab="console">
                         <i class="fas fa-terminal"></i> 控制台
                     </div>
+                    <div class="console-tab" data-console-tab="terminal">
+                        <i class="fas fa-window-restore"></i> 终端
+                    </div>
                     <div class="console-tab" data-console-tab="logs">
                         <i class="fas fa-list"></i> 日志
                     </div>
                     <div class="console-tab" data-console-tab="files">
                         <i class="fas fa-folder"></i> 文件
-                    </div>
-                    <div class="console-tab" data-console-tab="plugins">
-                        <i class="fas fa-puzzle-piece"></i> 插件
                     </div>
                     <div class="console-tab" data-console-tab="settings">
                         <i class="fas fa-cog"></i> 设置
@@ -2289,7 +2404,13 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
                             <div class="terminal-line"><span class="ts">[SYSTEM]</span> 点击"启动"按钮启动机器人; 启动后可用 /say 聊天、//命令</div>
                         </div>
                         <div class="terminal-input-row">
-                            <span class="terminal-prompt">$</span>
+                            <span class="terminal-prompt" title="输入命令后按回车发送">
+                                <svg class="terminal-prompt-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                    <rect x="0.5" y="0.5" width="15" height="15" rx="2.5" stroke="currentColor" stroke-opacity="0.6"/>
+                                    <path d="M4.2 11.2 7.4 8 4.2 4.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <line x1="9" y1="11.6" x2="12" y2="11.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                                </svg>
+                            </span>
                             <input type="text" class="terminal-input" id="terminalInput"
                                    placeholder="输入命令后按回车发送..." autocomplete="off" spellcheck="false">
                             <button class="btn btn-primary btn-sm" id="terminalSendBtn">
@@ -2315,38 +2436,65 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
                         </div>
                     </div>
 
-                    <!-- Files Tab -->
+                    <!-- Terminal Tab (真实终端) -->
+                    <div class="console-panel" id="ctab-terminal">
+                        <div class="terminal-toolbar">
+                            <span class="toolbar-info" id="realTermInfo">未连接</span>
+                            <span class="toolbar-status" id="realTermStatus"><span class="status-dot"></span> 离线</span>
+                            <button class="btn btn-secondary btn-sm" id="btnRealTermConnect" title="连接终端">
+                                <i class="fas fa-plug"></i> 连接
+                            </button>
+                            <button class="btn btn-ghost btn-sm" id="realTermClearBtn" title="清屏">
+                                <i class="fas fa-eraser"></i>
+                            </button>
+                        </div>
+                        <div class="real-terminal" id="realTerminalOutput">
+                            <div class="terminal-line system"><span class="ts">[SYSTEM]</span> 面板容器终端 · 工作目录: 容器根</div>
+                            <div class="terminal-line"><span class="ts">[SYSTEM]</span> 点击"连接"后可在容器内执行命令; pip 仅安装到面板私有环境</div>
+                        </div>
+                        <div class="terminal-input-row">
+                            <span class="terminal-prompt" title="输入命令后按回车发送">
+                                <svg class="terminal-prompt-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                    <rect x="0.5" y="0.5" width="15" height="15" rx="2.5" stroke="currentColor" stroke-opacity="0.6"/>
+                                    <path d="M4.2 11.2 7.4 8 4.2 4.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <line x1="9" y1="11.6" x2="12" y2="11.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                                </svg>
+                            </span>
+                            <input type="text" class="terminal-input" id="realTerminalInput"
+                                   placeholder="输入命令后按回车发送..." autocomplete="off" spellcheck="false" disabled>
+                            <button class="btn btn-primary btn-sm" id="realTerminalSendBtn" disabled>
+                                <i class="fas fa-paper-plane"></i> 发送
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Files Tab (真实文件管理) -->
                     <div class="console-panel" id="ctab-files">
-                        <div class="file-tab-toolbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                            <div style="font-weight:600;font-size:14px;">文件管理</div>
-                            <div style="display:flex;gap:8px;">
+                        <div class="file-tab-toolbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+                            <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+                                <button class="btn btn-ghost btn-sm" id="btnFsUp" title="上一级">
+                                    <i class="fas fa-arrow-up"></i>
+                                </button>
+                                <div class="fs-breadcrumb" id="fsBreadcrumb"><span class="fs-crumb">容器根</span></div>
+                            </div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <span class="quota-badge" id="fsQuotaBadge" title="存储配额"></span>
                                 <input type="file" id="fileUploadInput" style="display:none;" multiple>
-                                <button class="btn btn-primary btn-sm" id="btnUploadFile">
-                                    <i class="fas fa-upload"></i> 上传文件
+                                <button class="btn btn-secondary btn-sm" id="btnUploadFile">
+                                    <i class="fas fa-upload"></i> 上传
+                                </button>
+                                <button class="btn btn-secondary btn-sm" id="btnNewFolder">
+                                    <i class="fas fa-folder-plus"></i> 新建目录
                                 </button>
                                 <button class="btn btn-secondary btn-sm" id="btnRefreshFiles">
                                     <i class="fas fa-sync-alt"></i> 刷新
                                 </button>
                             </div>
                         </div>
-                        <div id="fileGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;"></div>
-                    </div>
-
-                    <!-- Plugins Tab -->
-                    <div class="console-panel" id="ctab-plugins">
-                        <div class="file-tab-toolbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                            <div style="font-weight:600;font-size:14px;">插件管理</div>
-                            <div style="display:flex;gap:8px;">
-                                <input type="file" id="pluginUploadInput" style="display:none;" accept=".py,.zip,.jar">
-                                <button class="btn btn-primary btn-sm" id="btnUploadPlugin">
-                                    <i class="fas fa-plus"></i> 安装插件
-                                </button>
-                                <button class="btn btn-secondary btn-sm" id="btnRefreshPlugins">
-                                    <i class="fas fa-sync-alt"></i> 刷新
-                                </button>
-                            </div>
+                        <div class="fs-search-row">
+                            <input type="text" class="form-input" id="fsSearchInput" placeholder="搜索容器内文件... (回车搜索)" style="width:100%;">
                         </div>
-                        <div id="pluginList" style="display:flex;flex-direction:column;gap:8px;"></div>
+                        <div id="fileGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;"></div>
                     </div>
 
                     <!-- Settings Tab -->
@@ -3556,9 +3704,14 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: var(-
                             <option value="rental">租赁服</option>
                             <option value="lobby">联机大厅</option>
                             <option value="local">本地联机</option>
+                            <option value="mountain">山头</option>
+                            <option value="pcdomain">PC山头</option>
+                            <option value="maincity">主城</option>
+                            <option value="networkgame">网络游戏</option>
+                            <option value="pclobby">PC联机大厅</option>
                             <option value="player">玩家</option>
                         </select>
-                        <input type="text" id="ipQueryInput" placeholder="输入服务器号/房间号" style="flex:1;min-width:180px;padding:10px 12px;background:var(--bg-input);border:1px solid var(--border-default);border-radius:6px;color:var(--text-primary);outline:none;" onfocus="this.style.borderColor='#58a6ff'" onblur="this.style.borderColor='#30363d'">
+                        <input type="text" id="ipQueryInput" placeholder="查询用：服务器号/房间号（查IP端口，非面板配置）" style="flex:1;min-width:180px;padding:10px 12px;background:var(--bg-input);border:1px solid var(--border-default);border-radius:6px;color:var(--text-primary);outline:none;" onfocus="this.style.borderColor='#58a6ff'" onblur="this.style.borderColor='#30363d'">
                     </div>
                     <div style="display:flex;justify-content:center">
                         <button class="btn btn-primary" style="min-width:160px;" onclick="window.queryIpPort && window.queryIpPort()">查询</button>
