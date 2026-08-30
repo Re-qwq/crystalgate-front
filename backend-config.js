@@ -1,1 +1,1 @@
-window.__CG_BACKENDS = ["/api/v2"];
+window.__CG_BACKENDS = ["https://mvqsk-49-235-209-65.free.pinggy.net/api/v2"];
