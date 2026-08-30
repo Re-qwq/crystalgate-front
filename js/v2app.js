@@ -227,13 +227,22 @@
        ====================================================================== */
 
     /**
+     * 将 API 路径转换为完整 URL (兼容绝对 URL / /api/v2 前缀 / 裸路径)
+     */
+    function apiUrl(path) {
+        if (path.startsWith("http")) return path;
+        const P = "/api/v2";
+        return path.startsWith(P) ? API_BASE + path.slice(P.length) : API_BASE + path;
+    }
+
+    /**
      * 发起 API 请求
      * @param {string} path - API 路径 (不含 /api/v2 前缀，或完整 URL)
      * @param {object} options - fetch 选项 {method, body, headers, ...}
      * @returns {Promise<object|string>} 解析后的 JSON 或文本
      */
     async function api(path, options = {}) {
-        const url = path.startsWith("http") ? path : (path.startsWith("/api/") ? path : API_BASE + path);
+        const url = apiUrl(path);
 
         // 构建请求头
         const headers = {};
@@ -8330,7 +8339,9 @@
 
         // 尝试用 WebSocket 实时输出
         const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
-        const wsUrl = `${wsProtocol}//${location.host}/api/v2/runner/ws?token=${encodeURIComponent(state.token || "")}`;
+        const wsTarget = new URL("/api/v2/runner/ws", API_BASE);
+        wsTarget.protocol = wsProtocol;
+        const wsUrl = wsTarget.href + "?token=" + encodeURIComponent(state.token || "");
 
         try {
             runnerWs = new WebSocket(wsUrl);
@@ -8536,7 +8547,7 @@
 
     window.downloadFileZip = function(fileId) {
         const token = state.token || "";
-        window.open(`/api/v2/files/${fileId}/download-zip?token=${encodeURIComponent(token)}`, "_blank");
+        window.open(apiUrl(`/api/v2/files/${fileId}/download-zip?token=${encodeURIComponent(token)}`), "_blank");
     };
 
     window.updateUserFile = async function(fileId, name, desc, price) {
@@ -8804,6 +8815,70 @@
         }
     };
 
+    // 玩家进服历史折叠 (已随查询结果返回, 直接切换显隐)
+    window.togglePlayerFold = function(uid) {
+        const el = document.getElementById(`fold-${uid}`);
+        if (el) el.style.display = el.style.display === "none" ? "block" : "none";
+    };
+
+    // 租赁服历史/黑名单折叠 (按需拉取全量列表)
+    window.toggleServerFold = async function(kind, code) {
+        const el = document.getElementById(`fold-${kind}-${code}`);
+        if (!el) return;
+        if (el.style.display !== "none") { el.style.display = "none"; return; }
+        el.style.display = "block";
+        if (el.dataset.loaded) return;
+        el.innerHTML = `<div style="color:#8b949e;text-align:center;padding:8px;"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>`;
+        try {
+            const isBl = kind === "bl";
+            const res = await api(isBl ? "/blacklist/query" : "/history/query",
+                { method: "POST", body: { server_code: code, limit: 300 } });
+            el.dataset.loaded = "1";
+            const rows = (res && res.data) || [];
+            if (!rows.length) {
+                el.innerHTML = `<div style="color:#8b949e;text-align:center;padding:8px;">暂无${isBl ? "黑名单" : "历史加入"}记录</div>`;
+                return;
+            }
+            if (isBl) {
+                el.innerHTML = rows.map(r => {
+                    const t = r.created_at ? formatTime(r.created_at) : "—";
+                    const pidTxt = r.player_name || r.player_id || "—";
+                    const reason = r.reason ? ` <span style="color:#f85149;">(${escapeHtml(r.reason)})</span>` : "";
+                    const delBtn = `<button class="btn btn-sm" style="padding:2px 8px;font-size:11px;color:#f85149;background:transparent;border:1px solid rgba(248,81,73,0.5);border-radius:4px;" onclick="removeBlacklist(${r.id}, '${escapeHtml(String(r.player_id))}')"><i class="fas fa-undo"></i> 移除</button>`;
+                    return `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid #21262d;"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i class="fas fa-ban" style="color:#f85149;margin-right:4px;"></i>${escapeHtml(pidTxt)}${reason}</span><span style="display:flex;gap:8px;align-items:center;white-space:nowrap;"><span class="mono" style="font-size:11px;color:#8b949e;">${escapeHtml(t)}</span>${delBtn}</span></div>`;
+                }).join("");
+            } else {
+                el.innerHTML = rows.map(r => {
+                    const t = r.created_at ? formatTime(r.created_at) : "—";
+                    const act = r.action === "leave" ? '<span style="color:#f85149;">离开</span>' : '<span style="color:#3fb950;">进入</span>';
+                    const srv = r.server_name || r.server_code || "—";
+                    const pidTxt = r.player_name || r.player_id || "—";
+                    return `<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid #21262d;">${act} <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(srv)}</span><span style="white-space:nowrap;"><span style="color:#d2a8ff;">${escapeHtml(pidTxt)}</span> <span class="mono" style="font-size:11px;color:#8b949e;">${escapeHtml(t)}</span></span></div>`;
+                }).join("");
+            }
+        } catch (e) {
+            el.innerHTML = `<div style="color:var(--color-danger);text-align:center;padding:8px;">加载失败, 请重试</div>`;
+        }
+    };
+
+    // 移除黑名单
+    window.removeBlacklist = async function(id, uid) {
+        if (!confirm(`确定将 ${uid || "该玩家"} 移出黑名单吗?`)) return;
+        try {
+            const res = await api("/blacklist/remove", { method: "POST", body: { id } });
+            if (res && res.success) {
+                toastOk("已移除");
+                // 重新加载当前折叠列表
+                const openEl = document.querySelector('[id^="fold-bl-"][style*="block"]');
+                if (openEl) { delete openEl.dataset.loaded; openEl.style.display = "none"; }
+            } else {
+                toastErr((res && res.message) || "移除失败");
+            }
+        } catch (e) {
+            toastErr("移除失败");
+        }
+    };
+
     window.queryIpPort = async function() {
         const typeEl = $("ipQueryType");
         const inputEl = $("ipQueryInput");
@@ -8813,7 +8888,11 @@
             rental: "请输入租赁服号",
             lobby: "请输入19位房间ID",
             local: "请输入房间号",
-            mountain: "请输入山头号",
+            mountain: "请输入山头邀请码",
+            pcdomain: "请输入PC山头邀请码",
+            maincity: "免填，直接查询",
+            networkgame: "请输入网络游戏房间号",
+            pclobby: "请输入PC大厅房间ID",
             player: "请输入玩家编号",
         };
         const setPlaceholder = () => {
@@ -8855,11 +8934,38 @@
                         if (statsHtml) html += `<div class="ipq-row"><span class="ipq-label">数据</span><span style="display:flex;gap:6px;flex-wrap:wrap;">${statsHtml}</span></div>`;
                     }
                     if (p.friend_count != null) html += `<div class="ipq-row"><span class="ipq-label">好友数</span><span>${escapeHtml(String(p.friend_count))}</span></div>`;
+                    // 黑名单状态 (若命中黑名单显示红色横幅)
+                    if (p.blacklisted && Array.isArray(p.blacklist) && p.blacklist.length) {
+                        const b0 = p.blacklist[0];
+                        const blInfo = b0.reason ? ` 原因: ${escapeHtml(b0.reason)}` : "";
+                        html += `<div class="ipq-row" style="background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.4);border-radius:6px;padding:6px 10px;"><span class="ipq-label" style="color:#f85149;"><i class="fas fa-ban"></i> 黑名单</span><span style="color:#f85149;">已拉黑${blInfo} (${p.blacklist.length}条)</span></div>`;
+                    }
+                    // 历史进服记录按钮 (折叠展示)
+                    const hist = Array.isArray(p.history) ? p.history : [];
+                    html += `<div style="margin-top:10px;">
+                        <button class="btn btn-secondary btn-sm" style="width:100%;" onclick="togglePlayerFold('${escapeHtml(String(p.player_id || ""))}')"><i class="fas fa-history"></i> 进服历史 (${hist.length})</button>
+                        <div id="fold-${escapeHtml(String(p.player_id || ""))}" style="display:none;margin-top:8px;background:#0d1117;border-radius:6px;padding:8px;max-height:220px;overflow-y:auto;font-size:12px;"></div>
+                    </div>`;
                     html += `<div style="display:flex;gap:8px;margin-top:10px;">
                         <button class="btn btn-secondary btn-sm" data-copy="${escapeHtml(String(p.player_id || ""))}" style="flex:1;"><i class="fas fa-copy"></i> 复制UID</button>
                         <button class="btn btn-secondary btn-sm" data-copy="${escapeHtml(p.name || "")}" style="flex:1;"><i class="fas fa-copy"></i> 复制昵称</button>
                     </div>`;
                     bodyEl.innerHTML = html;
+                    // 预填充进服历史折叠内容
+                    const foldEl = bodyEl.querySelector(`#fold-${CSS.escape(String(p.player_id || ""))}`);
+                    if (foldEl) {
+                        if (hist.length) {
+                            foldEl.innerHTML = hist.map(h => {
+                                const t = h.created_at ? formatTime(h.created_at) : "—";
+                                const act = h.action === "leave" ? '<span style="color:#f85149;">离开</span>' : '<span style="color:#3fb950;">进入</span>';
+                                const srv = h.server_name || h.server_code || "—";
+                                const pidTxt = h.player_name || h.player_id || "";
+                                return `<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid #21262d;">${act} <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(srv)}</span><span class="mono" style="font-size:11px;color:#8b949e;">${escapeHtml(pidTxt)} ${escapeHtml(t)}</span></div>`;
+                            }).join("");
+                        } else {
+                            foldEl.innerHTML = `<div style="color:#8b949e;text-align:center;padding:6px;">暂无历史进服记录</div>`;
+                        }
+                    }
                     bodyEl.querySelectorAll("[data-copy]").forEach((el) => {
                         el.addEventListener("click", () => copyToClipboard(el.dataset.copy));
                     });
@@ -8937,6 +9043,18 @@
                 if (d.has_password !== undefined && d.has_password !== null) html += `<div class="ipq-row"><span class="ipq-label"><i class="fas fa-lock"></i> 密码</span><span>${d.has_password ? '<span style="color:#f85149;">🔒有密码</span>' : '<span style="color:#3fb950;">🔓无密码</span>'}</span></div>`;
                 if (d.like_count != null && d.like_count !== "") html += `<div class="ipq-row"><span class="ipq-label"><i class="fas fa-thumbs-up"></i> 点赞数</span><span>${escapeHtml(String(d.like_count))}</span></div>`;
                 if (d.message) html += `<div class="ipq-row"><span class="ipq-label"><i class="fas fa-info-circle"></i> 信息</span><span>${escapeHtml(d.message)}</span></div>`;
+                // 历史加入 / 黑名单 按钮 (租赁服专属, 折叠展开)
+                if (type === "rental") {
+                    const hc = d.history_count || 0;
+                    const bc = d.blacklist_count || 0;
+                    const srvCode = escapeHtml(String(d.name || d.server_name || input));
+                    html += `<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+                        <button class="btn btn-secondary btn-sm" style="flex:1;min-width:120px;" onclick="toggleServerFold('hist','${srvCode}')"><i class="fas fa-user-clock"></i> 历史加入 (${hc})</button>
+                        <button class="btn btn-secondary btn-sm" style="flex:1;min-width:120px;" onclick="toggleServerFold('bl','${srvCode}')"><i class="fas fa-user-slash"></i> 黑名单 (${bc})</button>
+                    </div>
+                    <div id="fold-hist-${srvCode}" style="display:none;margin-top:8px;background:#0d1117;border-radius:6px;padding:8px;max-height:260px;overflow-y:auto;font-size:12px;"></div>
+                    <div id="fold-bl-${srvCode}" style="display:none;margin-top:8px;background:#0d1117;border-radius:6px;padding:8px;max-height:260px;overflow-y:auto;font-size:12px;"></div>`;
+                }
                 if (!html) html = `<div class="ipq-empty">未找到该房间信息</div>`;
                 if (bodyEl) {
                     bodyEl.innerHTML = html;
