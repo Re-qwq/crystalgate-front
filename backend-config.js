@@ -1,1 +1,1 @@
-window.__CG_BACKENDS = ["https://becomes-collar-bargains-last.trycloudflare.com/api/v2"];
+window.__CG_BACKENDS = ["https://cliff-tall-tank-assessment.trycloudflare.com/api/v2"];
