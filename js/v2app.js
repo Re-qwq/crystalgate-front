@@ -9040,6 +9040,10 @@
                 }
                 if (d.owner_id) html += `<div class="ipq-row"><span class="ipq-label"><i class="fas fa-id-card"></i> 房主UID</span><span class="mono">${escapeHtml(String(d.owner_id))}</span></div>`;
                 if (d.mc_version) html += `<div class="ipq-row"><span class="ipq-label"><i class="fas fa-cube"></i> 游戏版本</span><span>${escapeHtml(d.mc_version)}</span></div>`;
+                if (d.server_type) html += `<div class="ipq-row"><span class="ipq-label"><i class="fas fa-tag"></i> 服务器类型</span><span>${escapeHtml(String(d.server_type))}</span></div>`;
+                if (d.min_level != null && d.min_level !== "") html += `<div class="ipq-row"><span class="ipq-label"><i class="fas fa-signal"></i> 最低等级</span><span>${escapeHtml(String(d.min_level))}</span></div>`;
+                if (d.pvp !== undefined && d.pvp !== null && d.pvp !== "") html += `<div class="ipq-row"><span class="ipq-label"><i class="fas fa-crosshairs"></i> PVP</span><span>${String(d.pvp) === "1" || d.pvp === true ? '<span style="color:#f85149;">开启</span>' : '<span style="color:#3fb950;">关闭</span>'}</span></div>`;
+                if (d.world_id) html += `<div class="ipq-row"><span class="ipq-label"><i class="fas fa-map"></i> 世界ID</span><span class="mono">${escapeHtml(String(d.world_id))}</span></div>`;
                 if (d.has_password !== undefined && d.has_password !== null) html += `<div class="ipq-row"><span class="ipq-label"><i class="fas fa-lock"></i> 密码</span><span>${d.has_password ? '<span style="color:#f85149;">🔒有密码</span>' : '<span style="color:#3fb950;">🔓无密码</span>'}</span></div>`;
                 if (d.like_count != null && d.like_count !== "") html += `<div class="ipq-row"><span class="ipq-label"><i class="fas fa-thumbs-up"></i> 点赞数</span><span>${escapeHtml(String(d.like_count))}</span></div>`;
                 if (d.message) html += `<div class="ipq-row"><span class="ipq-label"><i class="fas fa-info-circle"></i> 信息</span><span>${escapeHtml(d.message)}</span></div>`;
@@ -9047,7 +9051,7 @@
                 if (type === "rental") {
                     const hc = d.history_count || 0;
                     const bc = d.blacklist_count || 0;
-                    const srvCode = escapeHtml(String(d.name || d.server_name || input));
+                    const srvCode = escapeHtml(String(d.server_code || d.name || input));
                     html += `<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
                         <button class="btn btn-secondary btn-sm" style="flex:1;min-width:120px;" onclick="toggleServerFold('hist','${srvCode}')"><i class="fas fa-user-clock"></i> 历史加入 (${hc})</button>
                         <button class="btn btn-secondary btn-sm" style="flex:1;min-width:120px;" onclick="toggleServerFold('bl','${srvCode}')"><i class="fas fa-user-slash"></i> 黑名单 (${bc})</button>
@@ -9059,14 +9063,23 @@
                 if (bodyEl) {
                     bodyEl.innerHTML = html;
                     // 底部一行: 右侧一键复制按钮 (固定栏, 不遮挡内容)
-                    if (full) {
+                    if (full || d.owner_id) {
                         const bar = document.createElement("div");
-                        bar.style.cssText = "display:flex;justify-content:flex-end;margin-top:14px;padding-top:10px;border-top:1px solid #30363d;";
-                        const btn = document.createElement("button");
-                        btn.className = "btn btn-primary btn-sm";
-                        btn.innerHTML = `<i class="fas fa-copy"></i> 复制 IP:端口`;
-                        btn.addEventListener("click", () => copyToClipboard(full));
-                        bar.appendChild(btn);
+                        bar.style.cssText = "display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:10px;border-top:1px solid #30363d;";
+                        if (d.owner_id) {
+                            const uidBtn = document.createElement("button");
+                            uidBtn.className = "btn btn-secondary btn-sm";
+                            uidBtn.innerHTML = `<i class="fas fa-copy"></i> 复制UID`;
+                            uidBtn.addEventListener("click", () => copyToClipboard(String(d.owner_id)));
+                            bar.appendChild(uidBtn);
+                        }
+                        if (full) {
+                            const btn = document.createElement("button");
+                            btn.className = "btn btn-primary btn-sm";
+                            btn.innerHTML = `<i class="fas fa-copy"></i> 复制 IP:端口`;
+                            btn.addEventListener("click", () => copyToClipboard(full));
+                            bar.appendChild(btn);
+                        }
                         bodyEl.appendChild(bar);
                     }
                     bodyEl.querySelectorAll("[data-copy]").forEach((el) => {
