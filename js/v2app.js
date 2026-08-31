@@ -8954,7 +8954,14 @@
         if (!input) { toastWarn(type === "player" ? "请输入玩家UID或昵称" : "请输入服务器号或房间号"); return; }
         // 玩家查询走独立端点: 数字输入同时返回 UID 匹配 + 昵称匹配
         if (type === "player") {
-            const res = await api("/player/query", { method: "POST", body: { player_id: input } });
+            let res;
+            try {
+                res = await api("/player/query", { method: "POST", body: { player_id: input } });
+            } catch (e) {
+                if (bodyEl) bodyEl.innerHTML = `<div class="ipq-empty" style="color:var(--color-danger);"><i class="fas fa-exclamation-circle"></i> 查询失败: ${escapeHtml((e && e.message) || "未知错误")}${(e && e.type === "auth") ? '（请重新登录）' : ''}</div>`;
+                if (resultEl) resultEl.classList.remove("hidden");
+                return;
+            }
             if (bodyEl) {
                 if (res.success && res.data) {
                     const d = res.data;
